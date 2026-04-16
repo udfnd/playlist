@@ -1,0 +1,2 @@
+- [SPEC-UI-001 Version Corrections](project_spec_ui_001_corrections.md) — R3F v9/drei v10 required for React 19 (not v8/v9 as SPEC states)
+- [R3F Testing Limitations](project_r3f_testing_limitations.md) — Vitest + test-renderer constructor equality issues, TDD boundary for 3D

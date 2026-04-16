@@ -1,0 +1,3 @@
+{"ts":"2026-04-14T17:47:14.973238041+09:00","event":"SessionStart","handler":"*hook.sessionStartHandler","duration_ms":0,"session_id":"c09225cf-1e45-4b20-8ac5-eed5283f40b6"}
+{"ts":"2026-04-14T18:59:27.32484025+09:00","event":"PreToolUse","handler":"*hook.preToolHandler","tool":"Edit","duration_ms":0,"decision":"allow","session_id":"c09225cf-1e45-4b20-8ac5-eed5283f40b6"}
+{"ts":"2026-04-15T20:08:12.298965458+09:00","event":"PostToolUse","handler":"*hook.postToolHandler","tool":"Edit","duration_ms":0,"session_id":"c09225cf-1e45-4b20-8ac5-eed5283f40b6"}

@@ -142,13 +142,18 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
               rotation={rotation}
               radius={CAROUSEL_RADIUS}
               hidden={card.song.id === selectedSong?.id && phase !== 'idle'}
+              isGhost={phase !== 'idle' && card.song.id !== selectedSong?.id}
               onSelect={handleSelectSong}
             />
           ))}
 
           </group>
 
-          <SceneDarkener active={phase === 'animating'} />
+          {/* Keep the scene dimmed for BOTH `animating` and `open` so the DOM SongView
+              overlay doesn't have a flash-frame where the carousel brightens back up
+              just before the overlay finishes fading in. Darkener only retracts when the
+              user closes (phase → 'idle'). */}
+          <SceneDarkener active={phase !== 'idle'} />
 
           {phase !== 'idle' && selectedSong && cardTransform && (
             <TransitionCard
@@ -156,6 +161,7 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
               songIndex={selectedSongIndex}
               startPosition={cardTransform.position}
               startQuaternion={cardTransform.quaternion}
+              startScale={cardTransform.scale}
               onComplete={handleTransitionComplete}
             />
           )}

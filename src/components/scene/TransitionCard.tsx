@@ -12,6 +12,7 @@ interface TransitionCardProps {
   songIndex: number;
   startPosition: [number, number, number];
   startQuaternion: [number, number, number, number];
+  startScale: number;
   onComplete: () => void;
 }
 
@@ -28,6 +29,7 @@ export function TransitionCard({
   songIndex,
   startPosition,
   startQuaternion,
+  startScale,
   onComplete,
 }: TransitionCardProps) {
   const meshRef = useRef<Mesh>(null);
@@ -101,6 +103,11 @@ export function TransitionCard({
 
     meshRef.current.position.lerpVectors(startPos, targetPos, t);
     meshRef.current.quaternion.slerpQuaternions(startQuat, targetQuat, t);
+    // Scale in from the clicked card's world scale (side=0.68, center=1.4) to reference 1.0,
+    // so the transition doesn't pop to full size on the first frame — especially important
+    // now that side thumbnails are clickable.
+    const scale = THREE.MathUtils.lerp(startScale, 1, t);
+    meshRef.current.scale.setScalar(scale);
 
     state.invalidate();
 
@@ -111,7 +118,12 @@ export function TransitionCard({
   });
 
   return (
-    <mesh ref={meshRef} position={startPosition} renderOrder={999}>
+    <mesh
+      ref={meshRef}
+      position={startPosition}
+      scale={startScale}
+      renderOrder={999}
+    >
       <planeGeometry args={[CARD_SIZE, CARD_SIZE]} />
       <meshBasicMaterial map={coverTexture} side={THREE.DoubleSide} transparent />
     </mesh>

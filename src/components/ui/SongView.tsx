@@ -112,7 +112,7 @@ export function SongView({
 
           {/* YouTube player */}
           {song.videoId && (
-            <div className="w-[calc(100vw-3rem)] max-w-2xl mt-2">
+            <div className="w-full mt-2">
               <div
                 ref={youtubePlayer?.containerRef}
                 className="relative w-full rounded-lg overflow-hidden [aspect-ratio:16/9] [&>iframe]:absolute [&>iframe]:inset-0 [&>iframe]:w-full [&>iframe]:h-full"

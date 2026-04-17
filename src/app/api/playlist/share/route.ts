@@ -2,6 +2,16 @@ import { auth } from '@/auth';
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 
+function getRequestOrigin(request: Request): string {
+  const url = new URL(request.url);
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  if (forwardedHost) {
+    return `${forwardedProto ?? url.protocol.replace(':', '')}://${forwardedHost}`;
+  }
+  return url.origin;
+}
+
 export async function POST(request: Request) {
   const session = await auth();
 
@@ -73,11 +83,13 @@ export async function POST(request: Request) {
 
     const updated = await updateRes.json();
 
+    const origin = getRequestOrigin(request);
+
     return Response.json({
       success: true,
       playlistId,
       privacyStatus: updated.status.privacyStatus,
-      shareUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3001'}?list=${playlistId}`,
+      shareUrl: `${origin}?list=${playlistId}`,
       youtubeUrl: `https://youtube.com/playlist?list=${playlistId}`,
     });
   } catch (error) {

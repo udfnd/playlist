@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage();
+const resp = await p.goto('https://repe.at/', { waitUntil: 'networkidle', timeout: 30000 });
+await p.waitForTimeout(6000);
+const url = p.url();
+const txt = await p.evaluate(() => document.body.innerText);
+const prices = txt.match(/[€$£]\s?[\d,.]+(?:\s?(?:USD|EUR))?|[\d,]+\s*(?:USD|EUR)/g) || [];
+console.log('Final URL:', url);
+console.log('Prices:', prices.slice(0, 10));
+console.log('---');
+console.log(txt.slice(0, 2500));
+await p.screenshot({ path: '/tmp/repeat-parked.png' });
+await b.close();

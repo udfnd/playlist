@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Scene } from '@/components/scene/Scene';
+import { ResponsiveCamera } from '@/components/scene/ResponsiveCamera';
 import { SongCard } from '@/components/scene/SongCard';
 import type { CardTransform } from '@/components/scene/SongCard';
 import { CylinderBase } from '@/components/scene/CylinderBase';
@@ -16,7 +17,7 @@ import { useYouTubePlayer } from '@/hooks/useYouTubePlayer';
 import type { Song, Playlist } from '@/data/types';
 import { MATTE_BLACK } from '@/lib/colors';
 
-const CAROUSEL_RADIUS = 3.5;
+const CAROUSEL_RADIUS = 4.8;
 const MIN_CARDS = 16;
 
 type TransitionPhase = 'idle' | 'animating' | 'open';
@@ -102,7 +103,7 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
 
   return (
     <div
-      className="relative w-screen h-screen overflow-hidden bg-matte-black"
+      className="relative w-dvw h-dvh overflow-hidden bg-matte-black touch-none"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -117,7 +118,6 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
         <Canvas
           frameloop="demand"
           dpr={[1, 2]}
-          camera={{ position: [0, 3, 8], fov: 50 }}
           onCreated={(state) => {
             state.gl.setClearColor(MATTE_BLACK);
           }}
@@ -125,6 +125,7 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
           style={{ background: MATTE_BLACK }}
           onPointerMissed={handleCanvasClick}
         >
+          <ResponsiveCamera />
           <Scene />
           <group position={[0, 1, 0]}>
           <CylinderBase isIdle={!isSongSelected && !isDragging} />

@@ -102,7 +102,7 @@ export default function Home() {
 
   if (view === 'carousel' && playlist) {
     return (
-      <div className="w-screen h-screen">
+      <div className="w-dvw h-dvh">
         <SongCarousel playlist={playlist} />
         <button
           type="button"
@@ -133,18 +133,18 @@ export default function Home() {
   }
 
   return (
-    <div className="w-screen h-screen">
+    <div className="w-dvw h-dvh">
       <PlaylistInput
         onSubmit={loadPlaylist}
         onSignIn={handleSignIn}
         isLoading={isLoading}
         error={error}
       />
-      <div className="fixed bottom-8 left-0 right-0 flex justify-center">
+      <div className="fixed bottom-8 left-0 right-0 z-[60] flex justify-center pointer-events-none">
         <button
           type="button"
           onClick={handleUseDemo}
-          className="text-sm font-sans text-cream-white/30 hover:text-cream-white/60 transition-colors"
+          className="pointer-events-auto text-sm font-sans text-cream-white/30 hover:text-cream-white/60 transition-colors"
         >
           or try with demo playlist
         </button>

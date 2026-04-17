@@ -15,69 +15,64 @@ export interface CardTransform {
 interface SongCardProps {
   song: Song;
   index: number;
-  position: [number, number, number];
+  originalIndex: number;
+  totalCards: number;
   rotation: number;
-  isSelected: boolean;
-  isAnySelected: boolean;
+  radius: number;
   hidden?: boolean;
   onSelect: (id: string, transform: CardTransform) => void;
 }
 
-const LERP_SPEED = 0.08;
 const CARD_SIZE = 1.8;
-const CAROUSEL_RADIUS = 4.8;
 
-// Layout zones based on angular distance from front slot (|atan2(worldX, worldZ)|):
-//
-//   [0 … FEATURED_END]          Center slot — big face-on card, the selection target.
-//   [FEATURED_END … GAP_END]    Gap — invisible breathing space.
-//   [GAP_END … SIDE_FADE_START] Side strip — small face-on thumbnails that preview
-//                               the rest of the playlist.
-//   [SIDE_FADE_START … SIDE_END] Soft fade as cards wrap to the back.
-//   [SIDE_END … π]              Hidden (behind the drum).
-//
-// The featured cap at 11° is just under the half-slot (11.25° for 16 cards), which guarantees
-// that at most ONE card can ever be inside the center zone.
-const FEATURED_END = (11 * Math.PI) / 180; // 11°
-const GAP_END = (18 * Math.PI) / 180; // 18°
-const SIDE_FADE_START = (70 * Math.PI) / 180; // 70°
-const SIDE_END = (88 * Math.PI) / 180; // 88°
+// Layout is driven by continuous slot offset s = angle / slotStep (wrapped to (-N/2, N/2]).
+// At any instant AT MOST ONE card has |s| < CENTER_HANDOFF_S, so at most one card is pulled
+// toward the center — the other cards stay on the side arc. No center overlap is possible.
+// Weight uses a cosine ramp (0 at boundary → 1 at s=0) with NO plateau, so the card is in
+// smooth motion throughout the entire approach rather than popping into place near center.
+const CENTER_HANDOFF_S = 0.5; // |s| at/above this → card stays on side arc (weight=0)
 
-const FEATURED_SCALE = 1.4;
-const SIDE_SCALE = 0.7;
+// Side strip arc:
+//   first side slot sits at SIDE_START_ANGLE from front, subsequent slots SIDE_STEP_ANGLE apart.
+//   cards past SIDE_FADE_START fade out as they wrap to the back of the drum.
+const SIDE_START_ANGLE = (20 * Math.PI) / 180;
+const SIDE_STEP_ANGLE = (10 * Math.PI) / 180;
+const SIDE_FADE_START = (70 * Math.PI) / 180;
+const SIDE_FADE_END = (90 * Math.PI) / 180;
 
-const FEATURED_OPACITY = 1.0;
-const SIDE_OPACITY = 0.75;
+const CENTER_SCALE = 1.4;
+const SIDE_SCALE = 0.68;
+const CENTER_OPACITY = 1.0;
+const SIDE_OPACITY = 0.78;
 
-const SCALE_LERP = 0.22;
-const OPACITY_LERP = 0.3;
-const BASE_RENDER_ORDER = 0;
 const FEATURED_RENDER_ORDER = 100;
 
 export function SongCard({
   song,
   index,
-  position,
+  originalIndex,
+  totalCards,
   rotation,
-  isSelected,
-  isAnySelected,
+  radius,
   hidden,
   onSelect,
 }: SongCardProps) {
   const meshRef = useRef<Mesh>(null);
   const groupRef = useRef<Group>(null);
-  const dimRef = useRef(1);
-  const scaleRef = useRef(SIDE_SCALE);
-  const isFrontRef = useRef(true);
-  const worldPosTemp = useMemo(() => new THREE.Vector3(), []);
-  const cameraTargetTemp = useMemo(() => new THREE.Vector3(), []);
+  const isFrontRef = useRef(false);
+  const cameraTargetRef = useRef(new THREE.Vector3());
 
   const coverTexture = useMemo(
     () =>
       song.thumbnailUrl
         ? loadThumbnailTexture(song.thumbnailUrl)
-        : generateCoverTexture(song.title, song.artist, song.color, index),
-    [song.thumbnailUrl, song.title, song.artist, song.color, index],
+        : generateCoverTexture(
+            song.title,
+            song.artist,
+            song.color,
+            originalIndex,
+          ),
+    [song.thumbnailUrl, song.title, song.artist, song.color, originalIndex],
   );
 
   useFrame((threeState) => {
@@ -88,110 +83,91 @@ export function SongCard({
       return;
     }
 
-    groupRef.current.getWorldPosition(worldPosTemp);
-    const worldAngDist = Math.abs(
-      Math.atan2(worldPosTemp.x, worldPosTemp.z),
-    );
-    isFrontRef.current = worldPosTemp.z > 0 && worldAngDist <= FEATURED_END;
+    const slotStep = (2 * Math.PI) / totalCards;
 
-    // --- Billboard: always face the camera ---
-    // lookAt works in world space. Using the camera's X/Z but keeping the card
-    // vertically aligned (no pitch) feels more like a real rotating rack.
-    cameraTargetTemp.copy(threeState.camera.position);
-    cameraTargetTemp.y = worldPosTemp.y;
-    groupRef.current.lookAt(cameraTargetTemp);
+    // Signed angle from front slot, wrapped to (-π, π].
+    const baseAngle = index * slotStep;
+    let angle = (baseAngle + rotation) % (2 * Math.PI);
+    if (angle > Math.PI) angle -= 2 * Math.PI;
+    if (angle <= -Math.PI) angle += 2 * Math.PI;
 
-    // --- Zone-based scale + opacity ---
-    // featuredAmount ramps up inside the center zone, then fades out through the gap.
-    const featuredAmount =
-      1 - THREE.MathUtils.smoothstep(worldAngDist, 0, FEATURED_END);
-    const gapAmount = THREE.MathUtils.smoothstep(
-      worldAngDist,
-      FEATURED_END,
-      GAP_END,
-    );
-    const sideVisibleAmount =
-      1 -
-      THREE.MathUtils.smoothstep(worldAngDist, SIDE_FADE_START, SIDE_END);
+    // Continuous signed slot offset — exactly one card satisfies |s| < 0.5 at any time.
+    const s = angle / slotStep;
+    const sAbs = Math.abs(s);
+    const sSign = s === 0 ? 1 : Math.sign(s);
 
-    // Scale: interpolate between side thumbnail size and featured full size.
+    // Cosine-squared ramp: weight = cos²(π|s| / (2·handoff)). Derivative is zero at both
+    // endpoints (s=0 and s=handoff), giving a natural ease-in-ease-out motion for position,
+    // scale and opacity simultaneously. Equivalent to (1 + cos(π|s|/handoff)) / 2.
+    const centerWeight =
+      sAbs >= CENTER_HANDOFF_S
+        ? 0
+        : 0.5 * (1 + Math.cos((Math.PI * sAbs) / CENTER_HANDOFF_S));
+
+    // Side slot position — independent of centerWeight so the side arc never moves into center.
+    const sideSlotOffset = Math.max(0, sAbs - CENTER_HANDOFF_S);
+    const sideAngleMag = SIDE_START_ANGLE + sideSlotOffset * SIDE_STEP_ANGLE;
+    const sideAngle = sSign * sideAngleMag;
+    const sidePosX = radius * Math.sin(sideAngle);
+    const sidePosZ = radius * Math.cos(sideAngle);
+
+    // Blend between side arc position and center; only the card with centerWeight>0 is pulled in.
+    const px = THREE.MathUtils.lerp(sidePosX, 0, centerWeight);
+    const pz = THREE.MathUtils.lerp(sidePosZ, radius, centerWeight);
+    groupRef.current.position.set(px, 0, pz);
+
+    // Billboard toward the camera, vertically aligned.
+    const tgt = cameraTargetRef.current;
+    tgt.copy(threeState.camera.position);
+    tgt.y = groupRef.current.position.y;
+    groupRef.current.lookAt(tgt);
+
+    // Scale lerps naturally because rotation itself is smooth (drag + snap easing).
     const targetScale = THREE.MathUtils.lerp(
       SIDE_SCALE,
-      FEATURED_SCALE,
-      featuredAmount,
+      CENTER_SCALE,
+      centerWeight,
     );
-    scaleRef.current = THREE.MathUtils.lerp(
-      scaleRef.current,
-      targetScale,
-      SCALE_LERP,
-    );
-    groupRef.current.scale.setScalar(scaleRef.current);
+    groupRef.current.scale.setScalar(targetScale);
 
-    // Opacity has three regions:
-    //   featured (inside FEATURED_END)           → 1.0
-    //   gap (FEATURED_END … GAP_END)              → fades 1.0 → 0 → SIDE_OPACITY
-    //   side (GAP_END … SIDE_FADE_START)          → SIDE_OPACITY
-    //   side fade (SIDE_FADE_START … SIDE_END)    → SIDE_OPACITY → 0
-    //   back (beyond SIDE_END)                    → 0
-    let targetOpacity: number;
-    if (worldAngDist <= FEATURED_END) {
-      targetOpacity = FEATURED_OPACITY;
-    } else if (worldAngDist <= GAP_END) {
-      // Dip to zero in the middle of the gap, then rise back to side opacity.
-      const gapMid = gapAmount < 0.5 ? gapAmount * 2 : (1 - gapAmount) * 2;
-      targetOpacity =
-        worldAngDist < (FEATURED_END + GAP_END) / 2
-          ? THREE.MathUtils.lerp(FEATURED_OPACITY, 0, gapAmount * 2)
-          : THREE.MathUtils.lerp(0, SIDE_OPACITY, (gapAmount - 0.5) * 2);
-      // Unused helper kept above in case of future tuning.
-      void gapMid;
-    } else if (worldAngDist <= SIDE_FADE_START) {
-      targetOpacity = SIDE_OPACITY;
-    } else {
-      targetOpacity = SIDE_OPACITY * sideVisibleAmount;
-    }
+    // Side cards that have wrapped past ~70° fade out as they drift to the back.
+    const sideVisibility =
+      1 -
+      THREE.MathUtils.smoothstep(
+        Math.abs(sideAngle),
+        SIDE_FADE_START,
+        SIDE_FADE_END,
+      );
+
+    const sideOpacityPart = (1 - centerWeight) * SIDE_OPACITY * sideVisibility;
+    const centerOpacityPart = centerWeight * CENTER_OPACITY;
+    const targetOpacity = centerOpacityPart + sideOpacityPart;
 
     const mat = meshRef.current.material as THREE.MeshBasicMaterial;
-    mat.opacity = THREE.MathUtils.lerp(
-      mat.opacity,
-      targetOpacity,
-      OPACITY_LERP,
-    );
-    meshRef.current.visible = mat.opacity > 0.005;
+    mat.opacity = targetOpacity;
+    meshRef.current.visible = targetOpacity > 0.01;
 
-    // Render ordering has TWO tiers so that:
-    //   (1) within each tier, closer-to-camera (higher worldZ) wins,
-    //   (2) any card inside the featured zone always beats cards in the side strip — no ambiguity
-    //       during the fade-in/fade-out crossover between two neighbouring cards.
-    // This guarantees the single card currently entering the center is visibly on top.
-    const depthOrder = Math.round(worldPosTemp.z * 100); // -480..+480 for radius 4.8
-    if (featuredAmount > 0) {
+    const brightness = THREE.MathUtils.lerp(0.72, 1.0, centerWeight);
+    mat.color.setRGB(brightness, brightness, brightness);
+
+    // Center card always wins the render order so the crossfade never shows a side card
+    // blending on top of the incoming center card.
+    const depthOrder = Math.round(pz * 100);
+    if (centerWeight > 0.01) {
       meshRef.current.renderOrder =
-        FEATURED_RENDER_ORDER + depthOrder + Math.round(featuredAmount * 1000);
+        FEATURED_RENDER_ORDER + depthOrder + Math.round(centerWeight * 1000);
     } else {
       meshRef.current.renderOrder = depthOrder;
     }
-    mat.depthWrite = featuredAmount > 0.05;
+    mat.depthWrite = centerWeight > 0.05;
 
-    // Subtle brightness dimming so side cards feel slightly recessed.
-    const selectionTarget = 1;
-    dimRef.current = THREE.MathUtils.lerp(dimRef.current, selectionTarget, LERP_SPEED);
-    const brightness = THREE.MathUtils.lerp(0.65, 1.0, featuredAmount);
-    const d = brightness * dimRef.current;
-    mat.color.setRGB(d, d, d);
+    isFrontRef.current = centerWeight > 0.8;
 
-    const eps = 0.002;
-    if (
-      Math.abs(dimRef.current - selectionTarget) > eps ||
-      Math.abs(scaleRef.current - targetScale) > eps ||
-      Math.abs(mat.opacity - targetOpacity) > eps
-    ) {
-      threeState.invalidate();
-    }
+    threeState.invalidate();
   });
 
   return (
-    <group ref={groupRef} position={position}>
+    <group ref={groupRef}>
       <mesh
         ref={meshRef}
         onClick={(e) => {
@@ -208,7 +184,11 @@ export function SongCard({
         }}
       >
         <planeGeometry args={[CARD_SIZE, CARD_SIZE]} />
-        <meshBasicMaterial map={coverTexture} side={THREE.DoubleSide} transparent />
+        <meshBasicMaterial
+          map={coverTexture}
+          side={THREE.DoubleSide}
+          transparent
+        />
       </mesh>
     </group>
   );

@@ -17,7 +17,7 @@ export function ResponsiveCamera() {
       // narrow portrait (phones)
       const distance = 12 + (0.7 - aspect) * 12;
       return {
-        position: [0, 2.9, distance] as [number, number, number],
+        position: [0, 2.3, distance] as [number, number, number],
         fov: 55,
       };
     }
@@ -25,7 +25,7 @@ export function ResponsiveCamera() {
     if (aspect < 1.2) {
       // tablet portrait or square-ish
       return {
-        position: [0, 3.3, 12] as [number, number, number],
+        position: [0, 2.7, 12] as [number, number, number],
         fov: 52,
       };
     }
@@ -33,14 +33,14 @@ export function ResponsiveCamera() {
     if (aspect < 2) {
       // desktop and short landscape
       return {
-        position: [0, 3.6, 11] as [number, number, number],
+        position: [0, 3.0, 11] as [number, number, number],
         fov: 50,
       };
     }
 
     // very wide landscape (phones rotated)
     return {
-      position: [0, 3.1, 9.5] as [number, number, number],
+      position: [0, 2.5, 9.5] as [number, number, number],
       fov: 48,
     };
   }, [size.width, size.height]);

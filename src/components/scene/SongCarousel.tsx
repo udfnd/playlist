@@ -11,11 +11,10 @@ import { TransitionCard } from '@/components/scene/TransitionCard';
 import { SceneDarkener } from '@/components/scene/SceneDarkener';
 import { SongView } from '@/components/ui/SongView';
 import { useCarouselState } from '@/hooks/useCarouselState';
-import { useCarouselControls, calculateAlbumPosition } from '@/hooks/useCarouselControls';
+import { useCarouselControls } from '@/hooks/useCarouselControls';
 import { usePlayback } from '@/hooks/usePlayback';
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer';
 import type { Song, Playlist } from '@/data/types';
-import { MATTE_BLACK } from '@/lib/colors';
 
 const CAROUSEL_RADIUS = 4.8;
 const MIN_CARDS = 16;
@@ -27,9 +26,6 @@ interface SongCarouselProps {
 }
 
 export default function SongCarousel({ playlist }: SongCarouselProps) {
-  const { rotation, isDragging, onPointerDown, onPointerMove, onPointerUp } =
-    useCarouselControls();
-
   const { songs } = playlist;
   const hasYouTube = songs.some((s) => s.videoId);
 
@@ -46,6 +42,9 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
     }
     return cards;
   }, [songs]);
+
+  const { rotation, isDragging, onPointerDown, onPointerMove, onPointerUp } =
+    useCarouselControls(undefined, displayCards.length);
 
   const {
     selectedSong,
@@ -103,14 +102,16 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
 
   return (
     <div
-      className="relative w-dvw h-dvh overflow-hidden bg-matte-black touch-none"
+      className="carousel-backdrop relative w-dvw h-dvh overflow-hidden touch-none"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
+      <div className="carousel-aurora" aria-hidden />
+      <div className="carousel-grain" aria-hidden />
       <Suspense
         fallback={
-          <div className="w-full h-full flex items-center justify-center bg-matte-black">
+          <div className="w-full h-full flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-warm-amber/30 border-t-warm-amber rounded-full animate-spin" />
           </div>
         }
@@ -118,11 +119,12 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
         <Canvas
           frameloop="demand"
           dpr={[1, 2]}
+          gl={{ alpha: true, antialias: true }}
           onCreated={(state) => {
-            state.gl.setClearColor(MATTE_BLACK);
+            state.gl.setClearColor(0x000000, 0);
           }}
           performance={{ min: 0.5, max: 1 }}
-          style={{ background: MATTE_BLACK }}
+          style={{ background: 'transparent', position: 'relative', zIndex: 10 }}
           onPointerMissed={handleCanvasClick}
         >
           <ResponsiveCamera />
@@ -130,24 +132,19 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
           <group position={[0, 1, 0]}>
           <CylinderBase isIdle={!isSongSelected && !isDragging} />
 
-          <group rotation={[0, rotation, 0]}>
-            {displayCards.map((card, index) => {
-              const pos = calculateAlbumPosition(index, displayCards.length, CAROUSEL_RADIUS);
-              return (
-                <SongCard
-                  key={`${card.song.id}-${index}`}
-                  song={card.song}
-                  index={card.originalIndex}
-                  position={[pos.x, 0, pos.z]}
-                  rotation={pos.angle}
-                  isSelected={card.song.id === selectedSong?.id}
-                  isAnySelected={isSongSelected}
-                  hidden={card.song.id === selectedSong?.id && phase !== 'idle'}
-                  onSelect={handleSelectSong}
-                />
-              );
-            })}
-          </group>
+          {displayCards.map((card, index) => (
+            <SongCard
+              key={`${card.song.id}-${index}`}
+              song={card.song}
+              index={index}
+              originalIndex={card.originalIndex}
+              totalCards={displayCards.length}
+              rotation={rotation}
+              radius={CAROUSEL_RADIUS}
+              hidden={card.song.id === selectedSong?.id && phase !== 'idle'}
+              onSelect={handleSelectSong}
+            />
+          ))}
 
           </group>
 

@@ -87,16 +87,32 @@ export function PlaylistPicker({ onSelect, onSignOut, isLoading }: PlaylistPicke
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-matte-black">
-      <div className="flex items-center justify-between p-4 border-b border-cream-white/10">
+      <div
+        className="flex items-center justify-between gap-4 px-4 py-3 border-b border-cream-white/10"
+        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+      >
         <h1 className="text-lg font-sans font-bold text-cream-white">
           My Playlists
         </h1>
         <button
           type="button"
           onClick={onSignOut}
-          className="text-sm font-sans text-cream-white/40 hover:text-cream-white/70 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-cream-white/15 text-cream-white/80 hover:text-cream-white hover:border-cream-white/30 hover:bg-cream-white/5 transition-colors text-sm font-sans"
+          aria-label="Sign out"
         >
-          Sign Out
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path
+              fillRule="evenodd"
+              d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z"
+              clipRule="evenodd"
+            />
+            <path
+              fillRule="evenodd"
+              d="M19 10a.75.75 0 00-.22-.53l-3.25-3.25a.75.75 0 10-1.06 1.06l1.97 1.97H8.75a.75.75 0 000 1.5h7.69l-1.97 1.97a.75.75 0 101.06 1.06l3.25-3.25A.75.75 0 0019 10z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span>Sign out</span>
         </button>
       </div>
 

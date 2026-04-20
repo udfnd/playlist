@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { fetchYouTubePlaylist, type AuthMethod } from '@/lib/youtube/fetch-playlist';
 import { RoomCarousel } from './RoomCarousel';
 import type { Playlist } from '@/data/types';
+import type { GeneratedPreset } from '@/lib/presets/types';
 
 interface RoomPageParams {
   handle: string;
@@ -25,6 +26,7 @@ async function loadRoomAndPlaylist(
       ownerHandle: string;
       playlist: Playlist;
       presetKey: string | null;
+      generatedPreset: GeneratedPreset | null;
     }
   | { ok: false; reason: 'not-found' | 'unavailable' }
 > {
@@ -40,7 +42,7 @@ async function loadRoomAndPlaylist(
   const { data: room } = await supabase
     .from('rooms')
     .select(
-      'id, user_id, slug, title, source_provider, source_playlist_id, visibility, preset_key',
+      'id, user_id, slug, title, source_provider, source_playlist_id, visibility, preset_key, generated_preset',
     )
     .eq('user_id', owner.id)
     .eq('slug', params.slug)
@@ -88,6 +90,7 @@ async function loadRoomAndPlaylist(
       ownerHandle: owner.handle!,
       playlist,
       presetKey: room.preset_key ?? null,
+      generatedPreset: (room.generated_preset as GeneratedPreset | null) ?? null,
     };
   } catch (err) {
     console.error('[room] playlist fetch failed:', err);
@@ -169,6 +172,7 @@ export default async function RoomPage({
       ownerHandle={result.ownerHandle}
       roomTitle={result.title}
       presetKey={result.presetKey}
+      generatedPreset={result.generatedPreset}
     />
   );
 }

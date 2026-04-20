@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PRESETS, DEFAULT_PRESET_KEY } from '@/lib/presets';
+import type { GeneratedPreset } from '@/lib/presets/types';
 
 type Visibility = 'public' | 'unlisted' | 'private';
 type Step = 'pick' | 'setup' | 'publishing';
@@ -29,6 +30,12 @@ export function NewRoomWizard() {
   const [presetKey, setPresetKey] = useState<string>(DEFAULT_PRESET_KEY);
   const [visibility, setVisibility] = useState<Visibility>('public');
   const [error, setError] = useState<string | null>(null);
+
+  // Custom AI preset state — active when presetKey === 'custom'
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [generatedPreset, setGeneratedPreset] = useState<GeneratedPreset | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   // Picker state
   const [playlists, setPlaylists] = useState<UserPlaylist[]>([]);
@@ -102,6 +109,7 @@ export function NewRoomWizard() {
           sourceProvider: 'youtube',
           sourcePlaylistId: picked.sourcePlaylistId,
           presetKey,
+          generatedPreset: presetKey === 'custom' ? generatedPreset : undefined,
           visibility,
         }),
       });
@@ -116,7 +124,28 @@ export function NewRoomWizard() {
       setError(err instanceof Error ? err.message : 'Unexpected error.');
       setStep('setup');
     }
-  }, [picked, title, presetKey, visibility]);
+  }, [picked, title, presetKey, generatedPreset, visibility]);
+
+  const handleGeneratePreset = useCallback(async () => {
+    const prompt = customPrompt.trim();
+    if (prompt.length < 2) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const res = await fetch('/api/me/presets/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to generate preset.');
+      setGeneratedPreset(data.preset as GeneratedPreset);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Unknown error.');
+    } finally {
+      setGenerating(false);
+    }
+  }, [customPrompt]);
 
   return (
     <main className="min-h-dvh w-full bg-matte-black text-cream-white">
@@ -329,7 +358,6 @@ export function NewRoomWizard() {
                       disabled={step === 'publishing'}
                       className="sr-only"
                     />
-                    {/* Swatch: 3-stop gradient mirrors the runtime palette */}
                     <span
                       aria-hidden
                       className="w-10 h-10 rounded-md flex-shrink-0 border border-cream-white/10"
@@ -347,7 +375,118 @@ export function NewRoomWizard() {
                     </span>
                   </label>
                 ))}
+
+                {/* Custom AI preset slot. Swatch uses the generated palette once
+                    available, otherwise shows a "sparkles" glyph on a neutral
+                    gradient. */}
+                <label
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${
+                    presetKey === 'custom'
+                      ? 'border-warm-amber/50 bg-warm-amber/5'
+                      : 'border-cream-white/10 hover:border-cream-white/20'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="preset"
+                    value="custom"
+                    checked={presetKey === 'custom'}
+                    onChange={() => setPresetKey('custom')}
+                    disabled={step === 'publishing'}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden
+                    className="w-10 h-10 rounded-md flex-shrink-0 border border-cream-white/10 flex items-center justify-center"
+                    style={
+                      generatedPreset
+                        ? {
+                            background: `linear-gradient(135deg, ${generatedPreset.swatch[0]} 0%, ${generatedPreset.swatch[1]} 55%, ${generatedPreset.swatch[2]} 100%)`,
+                          }
+                        : {
+                            background:
+                              'linear-gradient(135deg, #181028 0%, #3c2670 55%, #a2609b 100%)',
+                          }
+                    }
+                  >
+                    {!generatedPreset && (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="text-cream-white/80"
+                        aria-hidden
+                      >
+                        <path d="M10 2l1.2 3.8L15 7l-3.8 1.2L10 12l-1.2-3.8L5 7l3.8-1.2L10 2zm6 8l.6 1.9L18.5 13l-1.9.6L16 16l-.6-1.9L13.5 13l1.9-.6L16 10z" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="flex flex-col min-w-0">
+                    <span className="text-sm font-sans font-medium text-cream-white truncate">
+                      {generatedPreset?.label ?? 'Custom (AI)'}
+                    </span>
+                    <span className="text-[11px] font-sans text-cream-white/50 leading-4 truncate">
+                      {generatedPreset?.description ??
+                        'Describe the vibe; Claude generates a palette.'}
+                    </span>
+                  </span>
+                </label>
               </div>
+
+              {presetKey === 'custom' && (
+                <div className="flex flex-col gap-2 mt-2 p-3 rounded-lg bg-matte-black/60 border border-cream-white/10">
+                  <label
+                    htmlFor="preset-prompt"
+                    className="text-xs font-sans text-cream-white/60"
+                  >
+                    Describe your vibe
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="preset-prompt"
+                      type="text"
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value.slice(0, 200))}
+                      disabled={generating || step === 'publishing'}
+                      placeholder="rainy cafe in shibuya, 2am"
+                      className="flex-1 bg-matte-black border border-cream-white/15 rounded-lg px-3 py-2 text-sm font-sans text-cream-white placeholder:text-cream-white/25 outline-none focus:border-warm-amber/60 transition-colors disabled:opacity-50"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !generating) {
+                          e.preventDefault();
+                          handleGeneratePreset();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGeneratePreset}
+                      disabled={
+                        generating ||
+                        step === 'publishing' ||
+                        customPrompt.trim().length < 2
+                      }
+                      className="px-3 py-2 rounded-lg bg-warm-amber text-matte-black text-xs font-sans font-semibold hover:bg-warm-amber/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                    >
+                      {generating
+                        ? 'Generating…'
+                        : generatedPreset
+                          ? 'Regenerate'
+                          : 'Generate'}
+                    </button>
+                  </div>
+                  {generateError && (
+                    <p className="text-[11px] font-sans text-red-400 leading-4">
+                      {generateError}
+                    </p>
+                  )}
+                  {generatedPreset && (
+                    <p className="text-[11px] font-sans text-cream-white/50 leading-4">
+                      Palette ready — it applies when you publish.
+                    </p>
+                  )}
+                </div>
+              )}
             </fieldset>
 
             <fieldset className="flex flex-col gap-2">
@@ -397,10 +536,18 @@ export function NewRoomWizard() {
             <button
               type="button"
               onClick={handlePublish}
-              disabled={step === 'publishing' || !title.trim()}
+              disabled={
+                step === 'publishing' ||
+                !title.trim() ||
+                (presetKey === 'custom' && !generatedPreset)
+              }
               className="w-full px-4 py-3 rounded-lg bg-warm-amber text-matte-black text-sm font-sans font-semibold hover:bg-warm-amber/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {step === 'publishing' ? 'Publishing…' : 'Publish room'}
+              {step === 'publishing'
+                ? 'Publishing…'
+                : presetKey === 'custom' && !generatedPreset
+                  ? 'Generate a palette first'
+                  : 'Publish room'}
             </button>
           </>
         )}

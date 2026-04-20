@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { generateSlugCandidate, pickAvailableSlug } from '@/lib/slug';
 import { DEFAULT_PRESET_KEY, VALID_PRESET_KEYS } from '@/lib/presets';
+import type { Json } from '@/lib/supabase/database.types';
 
 export async function GET() {
   const session = await auth();
@@ -35,7 +36,55 @@ interface CreateRoomBody {
   sourceProvider?: 'youtube' | 'spotify';
   sourcePlaylistId?: string;
   presetKey?: string;
+  /**
+   * Present only when the user chose the "Custom" LLM-generated preset in the wizard.
+   * Must match the shape produced by /api/me/presets/generate — we re-validate here
+   * so the client can't forge a palette that bypasses the generator's schema.
+   */
+  generatedPreset?: unknown;
   visibility?: 'public' | 'unlisted' | 'private';
+}
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+function isHex(v: unknown): v is string {
+  return typeof v === 'string' && HEX_RE.test(v);
+}
+
+/**
+ * Lightweight re-validation of the generatedPreset payload. We don't want to trust
+ * the client after the generate endpoint returned it — they could have edited the
+ * request body — so we check the same shape the generator enforces.
+ */
+function validateGeneratedPreset(raw: unknown): raw is {
+  label: string;
+  description: string;
+  lighting: {
+    keyColor: string;
+    keyIntensity: number;
+    fillColor: string;
+    fillIntensity: number;
+    ambientIntensity: number;
+  };
+  cylinderColor: string;
+  swatch: [string, string, string];
+  backdrop: { base: string; glowPrimary: string; glowSecondary: string };
+  aurora: { a: string; b: string; c: string };
+} {
+  if (!raw || typeof raw !== 'object') return false;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.label !== 'string' || !r.label) return false;
+  if (typeof r.description !== 'string') return false;
+  const l = r.lighting as Record<string, unknown> | undefined;
+  if (!l || !isHex(l.keyColor) || !isHex(l.fillColor)) return false;
+  if (typeof l.keyIntensity !== 'number' || typeof l.fillIntensity !== 'number') return false;
+  if (typeof l.ambientIntensity !== 'number') return false;
+  if (!isHex(r.cylinderColor)) return false;
+  if (!Array.isArray(r.swatch) || r.swatch.length !== 3 || !r.swatch.every(isHex)) return false;
+  const b = r.backdrop as Record<string, unknown> | undefined;
+  if (!b || !isHex(b.base) || !isHex(b.glowPrimary) || !isHex(b.glowSecondary)) return false;
+  const a = r.aurora as Record<string, unknown> | undefined;
+  if (!a || !isHex(a.a) || !isHex(a.b) || !isHex(a.c)) return false;
+  return true;
 }
 
 const ALLOWED_VISIBILITY = new Set(['public', 'unlisted', 'private']);
@@ -86,8 +135,20 @@ export async function POST(request: Request) {
     );
   }
 
+  // Determine the preset source. Two mutually-exclusive paths:
+  //   1. Curated preset — presetKey references a key in VALID_PRESET_KEYS, no generated.
+  //   2. Custom (AI) — presetKey is 'custom' AND generatedPreset carries a valid palette.
   const presetKey = body.presetKey ?? DEFAULT_PRESET_KEY;
-  if (!VALID_PRESET_KEYS.has(presetKey)) {
+  const isCustom = presetKey === 'custom';
+
+  if (isCustom) {
+    if (!validateGeneratedPreset(body.generatedPreset)) {
+      return NextResponse.json(
+        { error: 'Custom preset payload is missing or malformed.' },
+        { status: 400 },
+      );
+    }
+  } else if (!VALID_PRESET_KEYS.has(presetKey)) {
     return NextResponse.json(
       { error: `presetKey "${presetKey}" is not available.` },
       { status: 400 },
@@ -134,6 +195,11 @@ export async function POST(request: Request) {
       source_provider: sourceProvider,
       source_playlist_id: sourcePlaylistId,
       visibility,
+      // Only stored for custom rooms; null for curated presets. Cast via Json
+      // because the schema's Json type covers plain-object shapes exactly.
+      generated_preset: isCustom
+        ? (body.generatedPreset as Json)
+        : null,
     })
     .select('id, slug, title, preset_key, visibility, created_at')
     .single();

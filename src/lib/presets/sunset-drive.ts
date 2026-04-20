@@ -8,12 +8,22 @@ export const SUNSET_DRIVE: Preset = {
   label: 'Sunset Drive',
   description: 'Coral horizon, warm dashboard glow, windows down.',
   lighting: {
-    keyColor: '#FF8C5A', // coral
+    keyColor: '#FF8C5A',
     keyIntensity: 2.1,
-    fillColor: '#C47AA1', // warm mauve
+    fillColor: '#C47AA1',
     fillIntensity: 0.55,
     ambientIntensity: 0.45,
   },
   cylinderColor: '#2A131F',
   swatch: ['#1A0B1A', '#FF8C5A', '#C47AA1'],
+  backdrop: {
+    base: '#1A0B1A',
+    glowPrimary: '#FF8C5A',
+    glowSecondary: '#C47AA1',
+  },
+  aurora: {
+    a: '#FF8C5A',
+    b: '#C47AA1',
+    c: '#FFC878',
+  },
 };

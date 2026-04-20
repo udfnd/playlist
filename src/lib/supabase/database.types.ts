@@ -69,6 +69,7 @@ export type Database = {
         Row: {
           cover_colors: string[]
           created_at: string
+          generated_preset: Json | null
           id: string
           mood_vector: Json
           preset_key: string
@@ -83,6 +84,7 @@ export type Database = {
         Insert: {
           cover_colors?: string[]
           created_at?: string
+          generated_preset?: Json | null
           id?: string
           mood_vector?: Json
           preset_key?: string
@@ -97,6 +99,7 @@ export type Database = {
         Update: {
           cover_colors?: string[]
           created_at?: string
+          generated_preset?: Json | null
           id?: string
           mood_vector?: Json
           preset_key?: string

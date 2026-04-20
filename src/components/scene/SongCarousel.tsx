@@ -15,7 +15,8 @@ import { useCarouselControls } from '@/hooks/useCarouselControls';
 import { usePlayback } from '@/hooks/usePlayback';
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer';
 import type { Song, Playlist } from '@/data/types';
-import { getPreset } from '@/lib/presets';
+import { getPreset, type Preset } from '@/lib/presets';
+import { hexToRgbTriplet } from '@/lib/presets/hex';
 
 const CAROUSEL_RADIUS = 4.8;
 const MIN_CARDS = 16;
@@ -24,12 +25,33 @@ type TransitionPhase = 'idle' | 'animating' | 'open';
 
 interface SongCarouselProps {
   playlist: Playlist;
-  /** rooms.preset_key — picks the visual treatment (background + lighting + base color). */
+  /** rooms.preset_key — picks the curated visual treatment when generatedPreset is null. */
   presetKey?: string | null;
+  /** rooms.generated_preset — an LLM-produced Preset minus the key. Takes priority. */
+  generatedPreset?: Omit<Preset, 'key'> | null;
 }
 
-export default function SongCarousel({ playlist, presetKey }: SongCarouselProps) {
-  const preset = getPreset(presetKey);
+export default function SongCarousel({
+  playlist,
+  presetKey,
+  generatedPreset,
+}: SongCarouselProps) {
+  // LLM-generated rooms win; fall back to a curated preset, defaulting to the first.
+  const preset: Preset = generatedPreset
+    ? { key: presetKey ?? 'custom', ...generatedPreset }
+    : getPreset(presetKey);
+
+  // Turn the preset's hex values into CSS custom properties on the backdrop so the
+  // gradient rules in globals.css can pick them up for both curated and generated
+  // palettes without any per-preset CSS.
+  const backdropVars = {
+    '--backdrop-base': preset.backdrop.base,
+    '--backdrop-glow-primary': hexToRgbTriplet(preset.backdrop.glowPrimary),
+    '--backdrop-glow-secondary': hexToRgbTriplet(preset.backdrop.glowSecondary),
+    '--aurora-a': hexToRgbTriplet(preset.aurora.a),
+    '--aurora-b': hexToRgbTriplet(preset.aurora.b),
+    '--aurora-c': hexToRgbTriplet(preset.aurora.c),
+  } as React.CSSProperties;
   const { songs } = playlist;
   const hasYouTube = songs.some((s) => s.videoId);
 
@@ -108,6 +130,7 @@ export default function SongCarousel({ playlist, presetKey }: SongCarouselProps)
     <div
       className="carousel-backdrop relative w-dvw h-dvh overflow-hidden touch-none"
       data-preset={preset.key}
+      style={backdropVars}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

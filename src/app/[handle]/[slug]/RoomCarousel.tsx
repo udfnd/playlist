@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import type { Playlist } from '@/data/types';
+import type { GeneratedPreset } from '@/lib/presets/types';
 
 const SongCarousel = dynamic(
   () => import('@/components/scene/SongCarousel'),
@@ -15,6 +16,7 @@ interface RoomCarouselProps {
   ownerHandle: string;
   roomTitle: string;
   presetKey: string | null;
+  generatedPreset: GeneratedPreset | null;
 }
 
 export function RoomCarousel({
@@ -22,6 +24,7 @@ export function RoomCarousel({
   ownerHandle,
   roomTitle,
   presetKey,
+  generatedPreset,
 }: RoomCarouselProps) {
   const [copied, setCopied] = useState(false);
 
@@ -48,7 +51,11 @@ export function RoomCarousel({
 
   return (
     <div className="w-dvw h-dvh">
-      <SongCarousel playlist={playlist} presetKey={presetKey} />
+      <SongCarousel
+        playlist={playlist}
+        presetKey={presetKey}
+        generatedPreset={generatedPreset}
+      />
 
       {/* Room header — thin, translucent, sits on top of the 3D scene */}
       <div

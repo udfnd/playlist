@@ -8,12 +8,22 @@ export const LATE_NIGHT: Preset = {
   label: 'Late Night',
   description: 'Matte black, warm amber lamp, violet aurora.',
   lighting: {
-    keyColor: '#E8A84C', // WARM_AMBER
+    keyColor: '#E8A84C',
     keyIntensity: 1.8,
     fillColor: '#FFFFFF',
     fillIntensity: 0.4,
     ambientIntensity: 0.35,
   },
-  cylinderColor: '#1A1A1A', // VINYL_BLACK
+  cylinderColor: '#1A1A1A',
   swatch: ['#0A0A0A', '#E8A84C', '#6B5B8A'],
+  backdrop: {
+    base: '#0A0A0A',
+    glowPrimary: '#E8A84C',
+    glowSecondary: '#6B5B8A',
+  },
+  aurora: {
+    a: '#E8A84C',
+    b: '#6B5B8A',
+    c: '#E8A84C',
+  },
 };

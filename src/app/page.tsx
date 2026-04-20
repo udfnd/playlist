@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { PlaylistInput } from '@/components/ui/PlaylistInput';
 import { PlaylistPicker } from '@/components/ui/PlaylistPicker';
 import { defaultPlaylist } from '@/data/mock-playlists';
@@ -149,7 +150,7 @@ export default function Home() {
         isLoading={isLoading}
         error={error}
       />
-      <div className="fixed bottom-8 left-0 right-0 z-[60] flex justify-center pointer-events-none">
+      <div className="fixed bottom-[max(2rem,env(safe-area-inset-bottom))] left-0 right-0 z-[60] flex flex-col items-center gap-3 pointer-events-none">
         <button
           type="button"
           onClick={handleUseDemo}
@@ -157,6 +158,15 @@ export default function Home() {
         >
           or try with demo playlist
         </button>
+        <div className="pointer-events-auto flex items-center gap-3 text-xs font-sans text-cream-white/30">
+          <Link href="/privacy" className="hover:text-cream-white/60 transition-colors">
+            Privacy
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/terms" className="hover:text-cream-white/60 transition-colors">
+            Terms
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -16,6 +16,15 @@
       "command": "moai",
       "args": ["mcp", "lsp"],
       "timeout": 30
+    },
+    "supabase": {
+      "$comment": "Supabase management: create/query tables, run SQL, apply migrations. Requires SUPABASE_ACCESS_TOKEN env var (get one at https://supabase.com/dashboard/account/tokens).",
+      "command": "/bin/bash",
+      "args": [
+        "-l",
+        "-c",
+        "exec npx -y @supabase/mcp-server-supabase@latest --access-token=\"$SUPABASE_ACCESS_TOKEN\""
+      ]
     }
   },
   "staggeredStartup": {

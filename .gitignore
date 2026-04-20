@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example is a template — always commit it.
+!.env.example
 
 # vercel
 .vercel
@@ -41,3 +43,8 @@ yarn-error.log*
 next-env.d.ts
 .moai/logs/
 .moai/reports/
+
+# Supabase CLI local state (migrations/ stays versioned)
+supabase/.temp/
+supabase/.branches/
+.supabase/

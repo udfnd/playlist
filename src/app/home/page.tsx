@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { auth, signOut } from '@/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { RoomCard, type RoomCardData } from './RoomCard';
 
 export const metadata: Metadata = {
   title: 'Your rooms — onrepeat',
@@ -10,43 +11,6 @@ export const metadata: Metadata = {
 
 // No static generation: every request needs the session cookie.
 export const dynamic = 'force-dynamic';
-
-interface RoomRow {
-  id: string;
-  slug: string;
-  title: string;
-  visibility: string;
-  preset_key: string;
-  created_at: string;
-}
-
-function formatRelative(iso: string): string {
-  const then = new Date(iso).getTime();
-  const diffMs = Date.now() - then;
-  const days = Math.floor(diffMs / 86_400_000);
-  if (days === 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
-function visibilityBadge(visibility: string): {
-  label: string;
-  color: string;
-} {
-  switch (visibility) {
-    case 'public':
-      return { label: 'Public', color: 'text-green-400' };
-    case 'unlisted':
-      return { label: 'Unlisted', color: 'text-yellow-400' };
-    case 'private':
-      return { label: 'Private', color: 'text-red-400' };
-    default:
-      return { label: visibility, color: 'text-cream-white/40' };
-  }
-}
 
 export default async function HomePage() {
   const session = await auth();
@@ -62,7 +26,7 @@ export default async function HomePage() {
   const supabase = getSupabaseAdmin();
   const { data: rooms, error } = await supabase
     .from('rooms')
-    .select('id, slug, title, visibility, preset_key, created_at')
+    .select('id, slug, title, visibility, created_at')
     .eq('user_id', session.userId)
     .order('created_at', { ascending: false });
 
@@ -70,7 +34,14 @@ export default async function HomePage() {
     console.error('[home] rooms load failed:', error);
   }
 
-  const roomList: RoomRow[] = rooms ?? [];
+  const roomList: RoomCardData[] = (rooms ?? []).map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    visibility: r.visibility as RoomCardData['visibility'],
+    created_at: r.created_at,
+    handle: session.handle!,
+  }));
 
   async function handleSignOut() {
     'use server';
@@ -138,34 +109,11 @@ export default async function HomePage() {
           </div>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {roomList.map((room) => {
-              const badge = visibilityBadge(room.visibility);
-              return (
-                <li key={room.id}>
-                  <Link
-                    href={`/${session.handle}/${room.slug}`}
-                    className="flex flex-col gap-2 p-4 rounded-xl bg-vinyl-black border border-cream-white/5 hover:border-cream-white/20 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-sans font-semibold text-cream-white truncate">
-                        {room.title}
-                      </h3>
-                      <span className={`text-xs font-mono ${badge.color} flex-shrink-0`}>
-                        {badge.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs font-sans text-cream-white/40">
-                      <span className="font-mono truncate">
-                        onrepeat.cc/{session.handle}/{room.slug}
-                      </span>
-                      <span className="flex-shrink-0 ml-2">
-                        {formatRelative(room.created_at)}
-                      </span>
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
+            {roomList.map((room) => (
+              <li key={room.id}>
+                <RoomCard room={room} />
+              </li>
+            ))}
           </ul>
         )}
       </section>

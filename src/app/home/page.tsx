@@ -156,7 +156,7 @@ export default async function HomePage() {
                     </div>
                     <div className="flex items-center justify-between text-xs font-sans text-cream-white/40">
                       <span className="font-mono truncate">
-                        /@{session.handle}/{room.slug}
+                        onrepeat.cc/{session.handle}/{room.slug}
                       </span>
                       <span className="flex-shrink-0 ml-2">
                         {formatRelative(room.created_at)}

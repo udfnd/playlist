@@ -62,11 +62,12 @@ export default function PrivacyPage() {
               URL. These identify you inside the Service UI only.
             </li>
             <li>
-              <strong className="text-cream-white">YouTube Data</strong>: read
-              access to your YouTube playlists (titles, thumbnails, item
-              counts, video IDs) and, only when you explicitly use the
-              &ldquo;Share&rdquo; action, the ability to change a single
-              playlist&apos;s privacy status from Private to Unlisted.
+              <strong className="text-cream-white">YouTube Data</strong>:
+              read-only access to your YouTube playlists (titles, thumbnails,
+              item counts, video IDs). The Service never modifies your
+              YouTube account; changes such as making a private playlist
+              unlisted or public must be performed by you directly on
+              YouTube.
             </li>
           </ul>
           <p>
@@ -84,10 +85,6 @@ export default function PrivacyPage() {
             <li>
               To load the songs of a selected playlist and render them as
               album-cover cards.
-            </li>
-            <li>
-              To generate a shareable link when you explicitly trigger the
-              Share action on a private playlist.
             </li>
             <li>
               To keep your session alive via a short-lived access token and, if
@@ -175,9 +172,9 @@ export default function PrivacyPage() {
               Google API Services User Data Policy
             </a>
             , including the Limited Use requirements. YouTube data is used
-            only to render the in-app carousel and to perform the share
-            operation you explicitly request. It is never sold, transferred
-            for advertising, or used to train generalized AI models.
+            only to render the in-app carousel and the associated listening
+            rooms. It is read-only and never sold, transferred for
+            advertising, or used to train generalized AI models.
           </p>
         </Section>
 

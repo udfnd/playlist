@@ -88,8 +88,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       checks: ['state'],
       authorization: {
         params: {
-          scope:
-            'openid email profile https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube',
+          // Only request the Sensitive read-only YouTube scope. The Restricted /auth/youtube
+          // (write) scope was dropped to make Google OAuth verification achievable without
+          // a commercial security assessment. Playlist-privacy changes are now left to the
+          // user on YouTube directly.
+          scope: 'openid email profile https://www.googleapis.com/auth/youtube.readonly',
           access_type: 'offline',
           prompt: 'consent',
         },

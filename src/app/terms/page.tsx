@@ -118,14 +118,17 @@ export default function TermsPage() {
           </ul>
         </Section>
 
-        <Section title="4. Sharing feature">
+        <Section title="4. Rooms and links">
           <p>
-            The Service offers an optional &ldquo;Share&rdquo; action that
-            switches one of your Private YouTube playlists to Unlisted using
-            the YouTube Data API. This change is made only when you click the
-            Share button. You can revert a playlist&apos;s privacy at any time
-            from YouTube&apos;s own interface. The Service is not responsible
-            for the content of the playlist you choose to share.
+            A room is a persistent URL you publish from a playlist. Room
+            visibility can be Public, Unlisted, or Private, and you can change
+            it anytime from your dashboard. The Service does not modify your
+            underlying YouTube playlist; if a source playlist is Private on
+            YouTube, visitors who are not the owner will not be able to load
+            its tracks. Making that playlist Unlisted or Public on YouTube is
+            your responsibility and must be done on YouTube directly. The
+            Service is not responsible for the content of any room you choose
+            to publish or share.
           </p>
         </Section>
 

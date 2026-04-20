@@ -97,7 +97,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account, profile, trigger }) {
+      // Refresh the handle from the DB when the client calls useSession().update()
+      // after the first-sign-in modal saves a handle. Also runs as a cheap fallback
+      // when a token has a userId but no handle yet — keeps the JWT consistent with
+      // the users table without forcing the user to sign out and back in.
+      if (
+        hasSupabaseCreds() &&
+        token.userId &&
+        (trigger === 'update' || !token.handle)
+      ) {
+        try {
+          const { data } = await getSupabaseAdmin()
+            .from('users')
+            .select('handle')
+            .eq('id', token.userId)
+            .maybeSingle();
+          if (data) token.handle = data.handle ?? null;
+        } catch (err) {
+          console.error('[auth] handle refetch failed:', err);
+        }
+      }
+
       // Fresh sign-in: account is present. Persist the user and their OAuth tokens into
       // Supabase, and capture the internal user id + handle so the JWT can expose them.
       if (account && profile) {

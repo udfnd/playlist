@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { PlaylistInput } from '@/components/ui/PlaylistInput';
 import { PlaylistPicker } from '@/components/ui/PlaylistPicker';
+import { SaveAsRoomButton } from '@/components/ui/SaveAsRoomButton';
 import { defaultPlaylist } from '@/data/mock-playlists';
 import type { Playlist } from '@/data/types';
 
@@ -110,6 +111,10 @@ export default function Home() {
   }, [session]);
 
   if (view === 'carousel' && playlist) {
+    // Only show the "Publish as room" action when the user is signed in and has claimed
+    // a handle. Anonymous demo viewers and users who haven't finished the handle
+    // onboarding fall back to the bare carousel.
+    const canPublish = Boolean(session?.handle);
     return (
       <div className="w-dvw h-dvh">
         <SongCarousel playlist={playlist} />
@@ -128,6 +133,12 @@ export default function Home() {
           </svg>
           <span>Back</span>
         </button>
+        {canPublish && (
+          <SaveAsRoomButton
+            sourcePlaylistId={playlist.id}
+            defaultTitle={playlist.name}
+          />
+        )}
       </div>
     );
   }

@@ -3,6 +3,32 @@ import { auth } from '@/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { generateSlugCandidate, pickAvailableSlug } from '@/lib/slug';
 
+export async function GET() {
+  const session = await auth();
+  if (!session?.userId) {
+    return NextResponse.json(
+      { error: 'Not authenticated, or Supabase is not configured.' },
+      { status: 401 },
+    );
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('rooms')
+    .select(
+      'id, slug, title, preset_key, visibility, source_provider, source_playlist_id, created_at',
+    )
+    .eq('user_id', session.userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[rooms] list failed:', error);
+    return NextResponse.json({ error: 'Failed to load rooms.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ rooms: data ?? [] });
+}
+
 interface CreateRoomBody {
   title?: string;
   sourceProvider?: 'youtube' | 'spotify';

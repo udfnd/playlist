@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { signIn, signOut, useSession } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { PlaylistInput } from '@/components/ui/PlaylistInput';
-import { PlaylistPicker } from '@/components/ui/PlaylistPicker';
+import { Landing } from '@/components/ui/Landing';
 import { SaveAsRoomButton } from '@/components/ui/SaveAsRoomButton';
 import { defaultPlaylist } from '@/data/mock-playlists';
 import type { Playlist } from '@/data/types';
@@ -15,31 +15,23 @@ const SongCarousel = dynamic(
   { ssr: false },
 );
 
-type View = 'input' | 'picker' | 'carousel';
+type View = 'landing' | 'carousel';
 
+/**
+ * Routing intent for "/":
+ *   • ?list=X in URL  → carousel view (shared/anonymous listen)
+ *   • authenticated and no ?list=  → redirect to /home (the new dashboard)
+ *   • unauthenticated and no ?list= → landing with Google CTA, demo, and
+ *     a disclosed YouTube-URL fallback
+ */
 export default function Home() {
   const { data: session, status } = useSession();
-  const [view, setView] = useState<View>('input');
+  const router = useRouter();
+  const [view, setView] = useState<View>('landing');
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Check URL params for shared playlist links
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const listParam = params.get('list');
-    if (listParam) {
-      loadPlaylist(listParam);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // When user signs in, show their playlists
-  useEffect(() => {
-    if (status === 'authenticated' && view === 'input') {
-      setView('picker');
-    }
-  }, [status, view]);
+  const [hasListParam, setHasListParam] = useState(false);
 
   const loadPlaylist = useCallback(async (listIdOrUrl: string) => {
     setIsLoading(true);
@@ -48,11 +40,7 @@ export default function Home() {
     try {
       const res = await fetch(`/api/playlist?list=${encodeURIComponent(listIdOrUrl)}`);
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to load playlist');
-      }
-
+      if (!res.ok) throw new Error(data.error || 'Failed to load playlist');
       if (!data.songs || data.songs.length === 0) {
         throw new Error('Playlist is empty or contains only private videos');
       }
@@ -60,7 +48,7 @@ export default function Home() {
       setPlaylist(data as Playlist);
       setView('carousel');
 
-      // Update URL so refresh reloads the same playlist
+      // Mirror the id into the URL so refresh keeps the same state.
       const url = new URL(window.location.href);
       url.searchParams.set('list', data.id);
       window.history.replaceState(null, '', url.toString());
@@ -71,29 +59,33 @@ export default function Home() {
     }
   }, []);
 
+  // On first mount, resolve any ?list= in the URL into a carousel view.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const listParam = params.get('list');
+    if (listParam) {
+      setHasListParam(true);
+      loadPlaylist(listParam);
+    }
+  }, [loadPlaylist]);
+
+  // Once authenticated and a handle is chosen, the dashboard at /home becomes the true
+  // home for signed-in users. Only redirect when there's no ?list= — otherwise the
+  // visitor is here specifically to view a shared playlist.
+  useEffect(() => {
+    if (
+      status === 'authenticated' &&
+      session?.handle &&
+      !hasListParam &&
+      view === 'landing'
+    ) {
+      router.replace('/home');
+    }
+  }, [status, session?.handle, hasListParam, view, router]);
+
   const handleSignIn = useCallback(() => {
-    signIn('google');
+    signIn('google', { callbackUrl: '/home' });
   }, []);
-
-  const handleSignOut = useCallback(() => {
-    signOut({ redirect: false });
-    setPlaylist(null);
-    setView('input');
-    setError(null);
-
-    // Also strip ?list= from URL so a refresh doesn't re-trigger loadPlaylist
-    // with the previous session's playlist.
-    const url = new URL(window.location.href);
-    url.searchParams.delete('list');
-    window.history.replaceState(null, '', url.toString());
-  }, []);
-
-  const handleSelectPlaylist = useCallback(
-    (playlistId: string) => {
-      loadPlaylist(playlistId);
-    },
-    [loadPlaylist],
-  );
 
   const handleUseDemo = useCallback(() => {
     setPlaylist(defaultPlaylist);
@@ -102,18 +94,17 @@ export default function Home() {
 
   const handleBack = useCallback(() => {
     setPlaylist(null);
-    setView(session ? 'picker' : 'input');
+    setView('landing');
     setError(null);
-
+    setHasListParam(false);
     const url = new URL(window.location.href);
     url.searchParams.delete('list');
     window.history.replaceState(null, '', url.toString());
-  }, [session]);
+    // If signed in with a handle, take them to their dashboard; otherwise stay on /.
+    if (session?.handle) router.push('/home');
+  }, [session?.handle, router]);
 
   if (view === 'carousel' && playlist) {
-    // Only show the "Publish as room" action when the user is signed in and has claimed
-    // a handle. Anonymous demo viewers and users who haven't finished the handle
-    // onboarding fall back to the bare carousel.
     const canPublish = Boolean(session?.handle);
     return (
       <div className="w-dvw h-dvh">
@@ -122,7 +113,7 @@ export default function Home() {
           type="button"
           onClick={handleBack}
           className="fixed top-[max(1rem,env(safe-area-inset-top))] left-4 z-[60] flex items-center gap-1.5 px-3 py-2 rounded-full bg-matte-black/60 backdrop-blur-md border border-cream-white/15 text-cream-white/80 hover:text-cream-white hover:bg-matte-black/80 hover:border-cream-white/30 transition-colors text-sm font-sans"
-          aria-label="Back to playlists"
+          aria-label="Back"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path
@@ -143,32 +134,18 @@ export default function Home() {
     );
   }
 
-  if (view === 'picker' && session) {
-    return (
-      <PlaylistPicker
-        onSelect={handleSelectPlaylist}
-        onSignOut={handleSignOut}
-        isLoading={isLoading}
-      />
-    );
-  }
-
   return (
     <div className="w-dvw h-dvh">
-      <PlaylistInput
+      <Landing
         onSubmit={loadPlaylist}
         onSignIn={handleSignIn}
+        onUseDemo={handleUseDemo}
         isLoading={isLoading}
         error={error}
       />
-      <div className="fixed bottom-[max(2rem,env(safe-area-inset-bottom))] left-0 right-0 z-[60] flex flex-col items-center gap-3 pointer-events-none">
-        <button
-          type="button"
-          onClick={handleUseDemo}
-          className="pointer-events-auto text-sm font-sans text-cream-white/30 hover:text-cream-white/60 transition-colors"
-        >
-          or try with demo playlist
-        </button>
+      <div
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-0 right-0 z-[60] flex justify-center pointer-events-none"
+      >
         <div className="pointer-events-auto flex items-center gap-3 text-xs font-sans text-cream-white/30">
           <Link href="/privacy" className="hover:text-cream-white/60 transition-colors">
             Privacy

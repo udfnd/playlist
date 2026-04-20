@@ -143,7 +143,7 @@ export default async function HomePage() {
               return (
                 <li key={room.id}>
                   <Link
-                    href={`/@${session.handle}/${room.slug}`}
+                    href={`/${session.handle}/${room.slug}`}
                     className="flex flex-col gap-2 p-4 rounded-xl bg-vinyl-black border border-cream-white/5 hover:border-cream-white/20 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2">

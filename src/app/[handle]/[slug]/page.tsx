@@ -12,12 +12,9 @@ interface RoomPageParams {
   slug: string;
 }
 
-// A URL like /@seungmok/my-room lands here with handle="@seungmok"; the '@' is a visual
-// marker only, the DB stores the bare handle.
-function stripAtSign(raw: string): string | null {
-  if (!raw.startsWith('@')) return null;
-  return raw.slice(1);
-}
+// URL format is /handle/slug (no leading "@"). Next.js App Router treats "@"-prefixed
+// path segments as parallel route slot references, so a URL like /@seungmok/my-room
+// never reaches this dynamic route. The UI surfaces the "@" only as display chrome.
 
 async function loadRoomAndPlaylist(
   params: RoomPageParams,
@@ -25,15 +22,12 @@ async function loadRoomAndPlaylist(
   | { ok: true; title: string; ownerHandle: string; playlist: Playlist }
   | { ok: false; reason: 'not-found' | 'unavailable' }
 > {
-  const bareHandle = stripAtSign(params.handle);
-  if (!bareHandle) return { ok: false, reason: 'not-found' };
-
   const supabase = getSupabaseAdmin();
 
   const { data: owner } = await supabase
     .from('users')
     .select('id, handle')
-    .eq('handle', bareHandle)
+    .eq('handle', params.handle)
     .maybeSingle();
   if (!owner) return { ok: false, reason: 'not-found' };
 
@@ -98,14 +92,11 @@ export async function generateMetadata({
   params: Promise<RoomPageParams>;
 }): Promise<Metadata> {
   const p = await params;
-  const bareHandle = stripAtSign(p.handle);
-  if (!bareHandle) return { title: 'Not found' };
-
   const supabase = getSupabaseAdmin();
   const { data: owner } = await supabase
     .from('users')
     .select('id')
-    .eq('handle', bareHandle)
+    .eq('handle', p.handle)
     .maybeSingle();
   if (!owner) return { title: 'Not found' };
 
@@ -118,8 +109,8 @@ export async function generateMetadata({
 
   if (!room) return { title: 'Not found' };
   return {
-    title: `${room.title} — @${bareHandle} · onrepeat`,
-    description: `A listening room by @${bareHandle} on onrepeat.cc`,
+    title: `${room.title} — @${p.handle} · onrepeat`,
+    description: `A listening room by @${p.handle} on onrepeat.cc`,
   };
 }
 

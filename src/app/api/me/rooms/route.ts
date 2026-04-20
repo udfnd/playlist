@@ -157,6 +157,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     room,
-    url: `/@${session.handle}/${room.slug}`,
+    // URL has no leading "@" on the handle because Next.js App Router reserves "@"-
+    // prefixed path segments for parallel route slots, which prevents dynamic matching.
+    // The UI still displays "@handle" as a visual prefix.
+    url: `/${session.handle}/${room.slug}`,
   });
 }

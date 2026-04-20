@@ -7,9 +7,10 @@ import { VINYL_BLACK } from '@/lib/colors';
 
 interface CylinderBaseProps {
   isIdle: boolean;
+  color?: string;
 }
 
-export function CylinderBase({ isIdle }: CylinderBaseProps) {
+export function CylinderBase({ isIdle, color = VINYL_BLACK }: CylinderBaseProps) {
   const meshRef = useRef<Mesh>(null);
 
   useFrame((state, delta) => {
@@ -22,7 +23,7 @@ export function CylinderBase({ isIdle }: CylinderBaseProps) {
   return (
     <mesh ref={meshRef} position={[0, -1.2, 0]} receiveShadow>
       <cylinderGeometry args={[3.2, 3.2, 0.12, 48]} />
-      <meshStandardMaterial color={VINYL_BLACK} roughness={0.9} metalness={0.1} />
+      <meshStandardMaterial color={color} roughness={0.9} metalness={0.1} />
     </mesh>
   );
 }

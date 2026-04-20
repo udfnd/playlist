@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { PRESETS, DEFAULT_PRESET_KEY } from '@/lib/presets';
 
 type Visibility = 'public' | 'unlisted' | 'private';
 type Step = 'pick' | 'setup' | 'publishing';
@@ -25,6 +26,7 @@ export function NewRoomWizard() {
   const [step, setStep] = useState<Step>('pick');
   const [picked, setPicked] = useState<PickedPlaylist | null>(null);
   const [title, setTitle] = useState('');
+  const [presetKey, setPresetKey] = useState<string>(DEFAULT_PRESET_KEY);
   const [visibility, setVisibility] = useState<Visibility>('public');
   const [error, setError] = useState<string | null>(null);
 
@@ -99,6 +101,7 @@ export function NewRoomWizard() {
           title,
           sourceProvider: 'youtube',
           sourcePlaylistId: picked.sourcePlaylistId,
+          presetKey,
           visibility,
         }),
       });
@@ -113,7 +116,7 @@ export function NewRoomWizard() {
       setError(err instanceof Error ? err.message : 'Unexpected error.');
       setStep('setup');
     }
-  }, [picked, title, visibility]);
+  }, [picked, title, presetKey, visibility]);
 
   return (
     <main className="min-h-dvh w-full bg-matte-black text-cream-white">
@@ -302,6 +305,50 @@ export function NewRoomWizard() {
                 placeholder="Room title"
               />
             </div>
+
+            <fieldset className="flex flex-col gap-2">
+              <legend className="text-xs font-sans text-cream-white/60 mb-1">
+                Visual preset
+              </legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {PRESETS.map((p) => (
+                  <label
+                    key={p.key}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${
+                      presetKey === p.key
+                        ? 'border-warm-amber/50 bg-warm-amber/5'
+                        : 'border-cream-white/10 hover:border-cream-white/20'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="preset"
+                      value={p.key}
+                      checked={presetKey === p.key}
+                      onChange={() => setPresetKey(p.key)}
+                      disabled={step === 'publishing'}
+                      className="sr-only"
+                    />
+                    {/* Swatch: 3-stop gradient mirrors the runtime palette */}
+                    <span
+                      aria-hidden
+                      className="w-10 h-10 rounded-md flex-shrink-0 border border-cream-white/10"
+                      style={{
+                        background: `linear-gradient(135deg, ${p.swatch[0]} 0%, ${p.swatch[1]} 55%, ${p.swatch[2]} 100%)`,
+                      }}
+                    />
+                    <span className="flex flex-col min-w-0">
+                      <span className="text-sm font-sans font-medium text-cream-white truncate">
+                        {p.label}
+                      </span>
+                      <span className="text-[11px] font-sans text-cream-white/50 leading-4 truncate">
+                        {p.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
             <fieldset className="flex flex-col gap-2">
               <legend className="text-xs font-sans text-cream-white/60 mb-1">

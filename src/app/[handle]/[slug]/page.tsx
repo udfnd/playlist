@@ -19,7 +19,13 @@ interface RoomPageParams {
 async function loadRoomAndPlaylist(
   params: RoomPageParams,
 ): Promise<
-  | { ok: true; title: string; ownerHandle: string; playlist: Playlist }
+  | {
+      ok: true;
+      title: string;
+      ownerHandle: string;
+      playlist: Playlist;
+      presetKey: string | null;
+    }
   | { ok: false; reason: 'not-found' | 'unavailable' }
 > {
   const supabase = getSupabaseAdmin();
@@ -33,7 +39,9 @@ async function loadRoomAndPlaylist(
 
   const { data: room } = await supabase
     .from('rooms')
-    .select('id, user_id, slug, title, source_provider, source_playlist_id, visibility')
+    .select(
+      'id, user_id, slug, title, source_provider, source_playlist_id, visibility, preset_key',
+    )
     .eq('user_id', owner.id)
     .eq('slug', params.slug)
     .maybeSingle();
@@ -79,6 +87,7 @@ async function loadRoomAndPlaylist(
       title: room.title,
       ownerHandle: owner.handle!,
       playlist,
+      presetKey: room.preset_key ?? null,
     };
   } catch (err) {
     console.error('[room] playlist fetch failed:', err);
@@ -159,6 +168,7 @@ export default async function RoomPage({
       playlist={result.playlist}
       ownerHandle={result.ownerHandle}
       roomTitle={result.title}
+      presetKey={result.presetKey}
     />
   );
 }

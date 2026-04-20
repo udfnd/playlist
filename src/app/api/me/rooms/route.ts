@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { generateSlugCandidate, pickAvailableSlug } from '@/lib/slug';
+import { DEFAULT_PRESET_KEY, VALID_PRESET_KEYS } from '@/lib/presets';
 
 export async function GET() {
   const session = await auth();
@@ -37,7 +38,6 @@ interface CreateRoomBody {
   visibility?: 'public' | 'unlisted' | 'private';
 }
 
-const ALLOWED_PRESETS = new Set(['late-night']); // expands with A-track work
 const ALLOWED_VISIBILITY = new Set(['public', 'unlisted', 'private']);
 
 export async function POST(request: Request) {
@@ -86,10 +86,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const presetKey = body.presetKey ?? 'late-night';
-  if (!ALLOWED_PRESETS.has(presetKey)) {
+  const presetKey = body.presetKey ?? DEFAULT_PRESET_KEY;
+  if (!VALID_PRESET_KEYS.has(presetKey)) {
     return NextResponse.json(
-      { error: `presetKey "${presetKey}" is not available yet.` },
+      { error: `presetKey "${presetKey}" is not available.` },
       { status: 400 },
     );
   }

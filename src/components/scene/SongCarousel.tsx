@@ -15,6 +15,7 @@ import { useCarouselControls } from '@/hooks/useCarouselControls';
 import { usePlayback } from '@/hooks/usePlayback';
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer';
 import type { Song, Playlist } from '@/data/types';
+import { getPreset } from '@/lib/presets';
 
 const CAROUSEL_RADIUS = 4.8;
 const MIN_CARDS = 16;
@@ -23,9 +24,12 @@ type TransitionPhase = 'idle' | 'animating' | 'open';
 
 interface SongCarouselProps {
   playlist: Playlist;
+  /** rooms.preset_key — picks the visual treatment (background + lighting + base color). */
+  presetKey?: string | null;
 }
 
-export default function SongCarousel({ playlist }: SongCarouselProps) {
+export default function SongCarousel({ playlist, presetKey }: SongCarouselProps) {
+  const preset = getPreset(presetKey);
   const { songs } = playlist;
   const hasYouTube = songs.some((s) => s.videoId);
 
@@ -103,6 +107,7 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
   return (
     <div
       className="carousel-backdrop relative w-dvw h-dvh overflow-hidden touch-none"
+      data-preset={preset.key}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -128,9 +133,9 @@ export default function SongCarousel({ playlist }: SongCarouselProps) {
           onPointerMissed={handleCanvasClick}
         >
           <ResponsiveCamera />
-          <Scene />
+          <Scene preset={preset} />
           <group position={[0, 1, 0]}>
-          <CylinderBase isIdle={!isSongSelected && !isDragging} />
+          <CylinderBase isIdle={!isSongSelected && !isDragging} color={preset.cylinderColor} />
 
           {displayCards.map((card, index) => (
             <SongCard

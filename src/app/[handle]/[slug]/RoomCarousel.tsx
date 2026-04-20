@@ -14,12 +14,14 @@ interface RoomCarouselProps {
   playlist: Playlist;
   ownerHandle: string;
   roomTitle: string;
+  presetKey: string | null;
 }
 
 export function RoomCarousel({
   playlist,
   ownerHandle,
   roomTitle,
+  presetKey,
 }: RoomCarouselProps) {
   const [copied, setCopied] = useState(false);
 
@@ -46,7 +48,7 @@ export function RoomCarousel({
 
   return (
     <div className="w-dvw h-dvh">
-      <SongCarousel playlist={playlist} />
+      <SongCarousel playlist={playlist} presetKey={presetKey} />
 
       {/* Room header — thin, translucent, sits on top of the 3D scene */}
       <div

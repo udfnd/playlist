@@ -1,21 +1,26 @@
 'use client';
 
-import { WARM_AMBER } from '@/lib/colors';
+import type { Preset } from '@/lib/presets';
 
-export function Scene() {
+interface SceneProps {
+  preset: Preset;
+}
+
+export function Scene({ preset }: SceneProps) {
+  const { lighting } = preset;
   return (
     <>
       <directionalLight
-        color={WARM_AMBER}
+        color={lighting.keyColor}
         position={[3, 8, 8]}
-        intensity={1.8}
+        intensity={lighting.keyIntensity}
       />
       <directionalLight
-        color="#FFFFFF"
+        color={lighting.fillColor}
         position={[-4, 5, -3]}
-        intensity={0.4}
+        intensity={lighting.fillIntensity}
       />
-      <ambientLight intensity={0.35} />
+      <ambientLight intensity={lighting.ambientIntensity} />
     </>
   );
 }

@@ -51,38 +51,44 @@ export default async function HomePage() {
   return (
     <main className="min-h-dvh w-full bg-matte-black text-cream-white">
       <header
-        className="flex items-center justify-between gap-4 px-5 py-4 border-b border-cream-white/10"
+        className="sticky top-0 z-20 flex items-center justify-between gap-4 px-5 py-4 border-b border-cream-white/10 bg-matte-black/80 backdrop-blur-md"
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
       >
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-lg font-sans font-bold text-cream-white">
+        <Link
+          href={`/${session.handle}`}
+          className="flex items-baseline gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber/60"
+          aria-label="View your public profile"
+        >
+          <span className="text-lg font-sans font-bold text-cream-white tracking-tight">
             onrepeat
-          </h1>
-          <span className="text-xs font-mono text-cream-white/40">
+          </span>
+          <span className="text-xs font-mono text-cream-white/50">
             @{session.handle}
           </span>
-        </div>
+        </Link>
         <form action={handleSignOut}>
           <button
             type="submit"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-cream-white/15 text-cream-white/80 hover:text-cream-white hover:border-cream-white/30 hover:bg-cream-white/5 transition-colors text-sm font-sans"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-cream-white/15 text-cream-white/70 hover:text-cream-white hover:border-cream-white/30 hover:bg-cream-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber/60 transition-colors text-sm font-sans"
           >
             <span>Sign out</span>
           </button>
         </form>
       </header>
 
-      <section className="max-w-3xl mx-auto px-5 py-8 flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-xl font-sans font-semibold">Your rooms</h2>
-            <p className="text-xs font-sans text-cream-white/50">
+      <section className="max-w-3xl mx-auto px-5 py-10 flex flex-col gap-8">
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-2xl font-sans font-bold tracking-tight">
+              Your rooms
+            </h1>
+            <p className="text-sm font-sans text-cream-white/55 leading-5">
               Publish a playlist as a room to get a shareable URL.
             </p>
           </div>
           <Link
             href="/home/new"
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-warm-amber text-matte-black text-sm font-sans font-semibold hover:bg-warm-amber/90 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-warm-amber text-matte-black text-sm font-sans font-semibold hover:bg-warm-amber/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber/60 focus-visible:ring-offset-2 focus-visible:ring-offset-matte-black transition-colors whitespace-nowrap"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
               <path
@@ -96,15 +102,28 @@ export default async function HomePage() {
         </div>
 
         {roomList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center gap-3 py-16 border border-dashed border-cream-white/10 rounded-2xl">
-            <p className="text-sm font-sans text-cream-white/60">
-              You haven&apos;t made a room yet.
-            </p>
+          <div className="flex flex-col items-center justify-center text-center gap-4 py-20 px-6 border border-dashed border-cream-white/10 rounded-2xl">
+            <div className="w-12 h-12 rounded-full bg-warm-amber/10 flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 20 20" fill="currentColor" className="text-warm-amber" aria-hidden>
+                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 2a6 6 0 110 12 6 6 0 010-12zm-.25 2.75v3H6.75a.75.75 0 000 1.5h3v3a.75.75 0 001.5 0v-3h3a.75.75 0 000-1.5h-3v-3a.75.75 0 00-1.5 0z" />
+              </svg>
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-sans font-medium text-cream-white">
+                No rooms yet
+              </p>
+              <p className="text-sm font-sans text-cream-white/50">
+                Turn any YouTube playlist into a 3D listening room.
+              </p>
+            </div>
             <Link
               href="/home/new"
-              className="text-sm font-sans text-warm-amber hover:text-warm-amber/80"
+              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-warm-amber text-matte-black text-sm font-sans font-semibold hover:bg-warm-amber/90 transition-colors"
             >
-              Create your first room →
+              Create your first room
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+              </svg>
             </Link>
           </div>
         ) : (

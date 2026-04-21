@@ -34,11 +34,23 @@ function formatRelative(iso: string): string {
 function visibilityBadge(visibility: Visibility) {
   switch (visibility) {
     case 'public':
-      return { label: 'Public', color: 'text-green-400' };
+      return {
+        label: 'Public',
+        dot: 'bg-green-400',
+        text: 'text-green-400/90',
+      };
     case 'unlisted':
-      return { label: 'Unlisted', color: 'text-yellow-400' };
+      return {
+        label: 'Unlisted',
+        dot: 'bg-yellow-400',
+        text: 'text-yellow-400/90',
+      };
     case 'private':
-      return { label: 'Private', color: 'text-red-400' };
+      return {
+        label: 'Private',
+        dot: 'bg-red-400',
+        text: 'text-red-400/90',
+      };
   }
 }
 
@@ -132,32 +144,35 @@ export function RoomCard({ room }: RoomCardProps) {
 
   return (
     <div
-      className="relative flex flex-col gap-2 p-4 rounded-xl bg-vinyl-black border border-cream-white/5 hover:border-cream-white/20 transition-colors"
+      className="group relative rounded-xl bg-vinyl-black border border-cream-white/5 hover:border-cream-white/20 transition-colors"
       style={busy === 'delete' ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
     >
+      {/* Clickable surface. pr-10 reserves 40px on the right edge so the top row
+          never collides with the absolutely-positioned menu button. */}
       <Link
         href={roomPath}
-        className="flex flex-col gap-2 min-w-0"
+        className="flex flex-col gap-3 p-4 pr-10 min-w-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber/60"
       >
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-sans font-semibold text-cream-white truncate">
-            {room.title}
-          </h3>
-          <span className={`text-xs font-mono ${badge.color} flex-shrink-0`}>
+        <h3 className="text-[15px] font-sans font-semibold text-cream-white truncate leading-tight">
+          {room.title}
+        </h3>
+        <p className="text-xs font-mono text-cream-white/40 truncate">
+          onrepeat.cc/{room.handle}/{room.slug}
+        </p>
+        <div className="flex items-center gap-2 text-xs font-sans">
+          <span className={`inline-flex items-center gap-1.5 ${badge.text}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} aria-hidden />
             {badge.label}
           </span>
-        </div>
-        <div className="flex items-center justify-between text-xs font-sans text-cream-white/40">
-          <span className="font-mono truncate">
-            onrepeat.cc/{room.handle}/{room.slug}
-          </span>
-          <span className="flex-shrink-0 ml-2">
+          <span className="text-cream-white/20" aria-hidden>·</span>
+          <span className="text-cream-white/40">
             {formatRelative(room.created_at)}
           </span>
         </div>
       </Link>
 
-      {/* Menu button — absolutely positioned so the whole card stays one clickable link. */}
+      {/* Menu button — absolutely positioned, sized to exactly fit the reserved
+          pr-10 space so it never overlaps content. */}
       <div ref={menuRef} className="absolute top-3 right-3">
         <button
           type="button"
@@ -168,7 +183,7 @@ export function RoomCard({ room }: RoomCardProps) {
           aria-label="Room actions"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className="w-7 h-7 flex items-center justify-center rounded-full text-cream-white/50 hover:text-cream-white hover:bg-cream-white/5 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full text-cream-white/40 bg-matte-black/40 backdrop-blur-sm hover:text-cream-white hover:bg-matte-black/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber/60 transition-colors"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
             <path d="M10 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" />

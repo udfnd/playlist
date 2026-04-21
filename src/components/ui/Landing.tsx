@@ -33,11 +33,11 @@ export function Landing({
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-matte-black px-6">
       <div className="w-full max-w-md flex flex-col items-center gap-8">
-        <header className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-3xl font-sans font-bold text-cream-white tracking-tight">
+        <header className="flex flex-col items-center gap-3 text-center">
+          <h1 className="text-[40px] leading-none font-sans font-bold text-cream-white tracking-tight">
             onrepeat
           </h1>
-          <p className="text-sm font-sans text-cream-white/60 leading-6 max-w-xs">
+          <p className="text-base font-sans text-cream-white/65 leading-6 max-w-xs">
             Turn a playlist into a 3D listening room you can share.
           </p>
         </header>
@@ -46,7 +46,7 @@ export function Landing({
           type="button"
           onClick={onSignIn}
           disabled={isLoading}
-          className="w-full py-3.5 bg-warm-amber text-matte-black font-sans font-semibold rounded-lg hover:bg-warm-amber/90 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+          className="w-full py-3.5 bg-warm-amber text-matte-black font-sans font-semibold rounded-lg hover:bg-warm-amber/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber focus-visible:ring-offset-2 focus-visible:ring-offset-matte-black transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
             <path
@@ -73,7 +73,7 @@ export function Landing({
           type="button"
           onClick={onUseDemo}
           disabled={isLoading}
-          className="text-sm font-sans text-cream-white/60 hover:text-cream-white transition-colors disabled:opacity-40"
+          className="text-sm font-sans text-cream-white/60 hover:text-cream-white underline-offset-4 decoration-cream-white/20 hover:decoration-cream-white/50 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber/60 rounded px-1 transition-colors disabled:opacity-40"
         >
           Try with a demo playlist
         </button>

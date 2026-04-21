@@ -172,15 +172,51 @@ export function NewRoomWizard() {
         <span className="w-[76px]" aria-hidden />
       </header>
 
-      <section className="max-w-xl mx-auto px-5 py-8 flex flex-col gap-6">
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 text-xs font-mono text-cream-white/40">
-          <span className={step === 'pick' ? 'text-cream-white' : ''}>1 · Pick</span>
-          <span>→</span>
-          <span className={step === 'setup' || step === 'publishing' ? 'text-cream-white' : ''}>
-            2 · Setup
-          </span>
-        </div>
+      <section className="max-w-xl mx-auto px-5 py-10 flex flex-col gap-8">
+        {/* Step indicator — visual progress, not just text */}
+        <nav aria-label="Wizard progress" className="flex items-center gap-3">
+          {(['pick', 'setup'] as const).map((s, i) => {
+            const isActive = step === s || (s === 'setup' && step === 'publishing');
+            const isComplete = i === 0 && (step === 'setup' || step === 'publishing');
+            return (
+              <div key={s} className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono font-semibold flex-shrink-0 transition-colors ${
+                      isComplete
+                        ? 'bg-warm-amber text-matte-black'
+                        : isActive
+                          ? 'bg-warm-amber/20 text-warm-amber ring-1 ring-warm-amber/50'
+                          : 'bg-cream-white/5 text-cream-white/40'
+                    }`}
+                    aria-current={isActive && !isComplete ? 'step' : undefined}
+                  >
+                    {isComplete ? (
+                      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                        <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.58l7.3-7.3a1 1 0 011.4 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  <span
+                    className={`text-xs font-sans ${
+                      isActive || isComplete ? 'text-cream-white' : 'text-cream-white/40'
+                    }`}
+                  >
+                    {s === 'pick' ? 'Pick playlist' : 'Set up room'}
+                  </span>
+                </div>
+                {i === 0 && (
+                  <div
+                    className={`flex-1 h-px ${isComplete ? 'bg-warm-amber/50' : 'bg-cream-white/10'}`}
+                    aria-hidden
+                  />
+                )}
+              </div>
+            );
+          })}
+        </nav>
 
         {step === 'pick' && (
           <>

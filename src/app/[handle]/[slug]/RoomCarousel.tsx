@@ -15,6 +15,12 @@ interface RoomCarouselProps {
   playlist: Playlist;
   ownerHandle: string;
   roomTitle: string;
+  /**
+   * Which provider the track IDs belong to. YouTube uses the JS iframe API
+   * (via `useYouTubePlayer`); Spotify uses a plain `<iframe>` embed at
+   * `https://open.spotify.com/embed/track/{id}` with no token exposure.
+   */
+  playbackProvider: 'youtube' | 'spotify';
   presetKey: string | null;
   generatedPreset: GeneratedPreset | null;
 }
@@ -23,6 +29,7 @@ export function RoomCarousel({
   playlist,
   ownerHandle,
   roomTitle,
+  playbackProvider,
   presetKey,
   generatedPreset,
 }: RoomCarouselProps) {
@@ -53,6 +60,7 @@ export function RoomCarousel({
     <div className="w-dvw h-dvh">
       <SongCarousel
         playlist={playlist}
+        playbackProvider={playbackProvider}
         presetKey={presetKey}
         generatedPreset={generatedPreset}
       />

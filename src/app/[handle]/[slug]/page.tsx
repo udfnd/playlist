@@ -4,9 +4,13 @@ import Link from 'next/link';
 import { auth } from '@/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { fetchYouTubePlaylist, type AuthMethod } from '@/lib/youtube/fetch-playlist';
+import { fetchSpotifyPlaylist } from '@/lib/spotify/fetch-playlist';
+import { SpotifyUnavailableError } from '@/lib/spotify/client';
 import { RoomCarousel } from './RoomCarousel';
 import type { Playlist } from '@/data/types';
 import type { GeneratedPreset } from '@/lib/presets/types';
+
+type PlaybackProvider = 'youtube' | 'spotify';
 
 interface RoomPageParams {
   handle: string;
@@ -25,6 +29,7 @@ async function loadRoomAndPlaylist(
       title: string;
       ownerHandle: string;
       playlist: Playlist;
+      playbackProvider: PlaybackProvider;
       presetKey: string | null;
       generatedPreset: GeneratedPreset | null;
     }
@@ -58,8 +63,32 @@ async function loadRoomAndPlaylist(
     }
   }
 
-  // Choose the strongest available YouTube auth: prefer an owner OAuth token (so even
-  // unlisted-to-public-after-share works), fall back to API key for public playlists.
+  // Provider branching: rooms keep their original provider. We never fall back
+  // across providers — a Spotify room with a revoked token is "unavailable",
+  // not "try the YouTube API key". This preserves owner-facing reconnect UX.
+  if (room.source_provider === 'spotify') {
+    try {
+      const playlist = await fetchSpotifyPlaylist(room.user_id, room.source_playlist_id);
+      return {
+        ok: true,
+        title: room.title,
+        ownerHandle: owner.handle!,
+        playlist,
+        playbackProvider: 'spotify',
+        presetKey: room.preset_key ?? null,
+        generatedPreset: (room.generated_preset as GeneratedPreset | null) ?? null,
+      };
+    } catch (err) {
+      if (err instanceof SpotifyUnavailableError) {
+        return { ok: false, reason: 'unavailable' };
+      }
+      console.error('[room] spotify playlist fetch failed:', err);
+      return { ok: false, reason: 'unavailable' };
+    }
+  }
+
+  // YouTube branch — prefer owner OAuth, fall back to server API key for
+  // public playlists.
   let authMethod: AuthMethod | null = null;
 
   try {
@@ -89,6 +118,7 @@ async function loadRoomAndPlaylist(
       title: room.title,
       ownerHandle: owner.handle!,
       playlist,
+      playbackProvider: 'youtube',
       presetKey: room.preset_key ?? null,
       generatedPreset: (room.generated_preset as GeneratedPreset | null) ?? null,
     };
@@ -171,6 +201,7 @@ export default async function RoomPage({
       playlist={result.playlist}
       ownerHandle={result.ownerHandle}
       roomTitle={result.title}
+      playbackProvider={result.playbackProvider}
       presetKey={result.presetKey}
       generatedPreset={result.generatedPreset}
     />

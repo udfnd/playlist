@@ -1,5 +1,12 @@
 'use client';
 
+// @MX:SPEC: SPEC-SPOTIFY-001
+// New Room wizard. Users pick a source (YouTube | Spotify), pick a playlist
+// from that source, then configure title / preset / visibility. Publishing
+// hits POST /api/me/rooms with the selected sourceProvider. The Spotify
+// branch preserves the YouTube flow exactly — the URL fallback, playlist
+// list layout, and publish button are source-agnostic.
+
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PRESETS, DEFAULT_PRESET_KEY } from '@/lib/presets';
@@ -7,24 +14,29 @@ import type { GeneratedPreset } from '@/lib/presets/types';
 
 type Visibility = 'public' | 'unlisted' | 'private';
 type Step = 'pick' | 'setup' | 'publishing';
+type SourceProvider = 'youtube' | 'spotify';
 
 interface UserPlaylist {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   thumbnailUrl: string;
   itemCount: number;
-  privacyStatus: string;
+  // YouTube uses `privacyStatus`; Spotify uses `privacy`. We normalize to
+  // a common `privacyLabel` at fetch time so the list view stays uniform.
+  privacyLabel: string;
 }
 
 interface PickedPlaylist {
   sourcePlaylistId: string;
   defaultTitle: string;
   thumbnailUrl: string | null;
+  provider: SourceProvider;
 }
 
 export function NewRoomWizard() {
   const [step, setStep] = useState<Step>('pick');
+  const [sourceProvider, setSourceProvider] = useState<SourceProvider>('youtube');
   const [picked, setPicked] = useState<PickedPlaylist | null>(null);
   const [title, setTitle] = useState('');
   const [presetKey, setPresetKey] = useState<string>(DEFAULT_PRESET_KEY);
@@ -37,64 +49,147 @@ export function NewRoomWizard() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
-  // Picker state
+  // Picker state (per-source)
   const [playlists, setPlaylists] = useState<UserPlaylist[]>([]);
   const [fetching, setFetching] = useState(true);
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
 
+  // Spotify connection probe — `null` means "not yet checked"; only queried
+  // on demand when the user switches to the Spotify tab so we avoid a
+  // useless network call for users who stay on YouTube.
+  const [spotifyConnected, setSpotifyConnected] = useState<boolean | null>(null);
+
+  // Load playlists for the active source. Re-runs when switching tabs or
+  // returning to the pick step. Spotify also needs the connection probe
+  // first — we short-circuit and render the connect CTA if disconnected.
   useEffect(() => {
     if (step !== 'pick') return;
     let cancelled = false;
-    setFetching(true);
-    fetch('/api/my-playlists')
-      .then((res) => res.json())
-      .then((data) => {
+
+    async function load() {
+      setPickerError(null);
+      setPlaylists([]);
+
+      if (sourceProvider === 'youtube') {
+        setFetching(true);
+        try {
+          const res = await fetch('/api/my-playlists');
+          const data = await res.json();
+          if (cancelled) return;
+          if (data.error) throw new Error(data.error);
+          setPlaylists(
+            (
+              data.playlists as Array<{
+                id: string;
+                title: string;
+                description: string;
+                thumbnailUrl: string;
+                itemCount: number;
+                privacyStatus: string;
+              }>
+            ).map((p) => ({
+              id: p.id,
+              title: p.title,
+              description: p.description,
+              thumbnailUrl: p.thumbnailUrl,
+              itemCount: p.itemCount,
+              privacyLabel: p.privacyStatus,
+            })),
+          );
+        } catch (err) {
+          if (!cancelled) setPickerError(err instanceof Error ? err.message : 'Unknown error.');
+        } finally {
+          if (!cancelled) setFetching(false);
+        }
+        return;
+      }
+
+      // Spotify path: probe connection first.
+      setFetching(true);
+      try {
+        const probe = await fetch('/api/me/spotify/status');
+        const probeData = await probe.json();
+        if (cancelled) return;
+        const connected = Boolean(probeData.connected);
+        setSpotifyConnected(connected);
+        if (!connected) {
+          setPlaylists([]);
+          return;
+        }
+        const res = await fetch('/api/me/spotify/playlists');
+        const data = await res.json();
         if (cancelled) return;
         if (data.error) throw new Error(data.error);
-        setPlaylists(data.playlists as UserPlaylist[]);
-      })
-      .catch((err) => !cancelled && setPickerError(err.message))
-      .finally(() => !cancelled && setFetching(false));
+        setPlaylists(
+          (
+            data.playlists as Array<{
+              id: string;
+              title: string;
+              thumbnailUrl: string;
+              itemCount: number;
+              privacy: string;
+            }>
+          ).map((p) => ({
+            id: p.id,
+            title: p.title,
+            thumbnailUrl: p.thumbnailUrl,
+            itemCount: p.itemCount,
+            privacyLabel: p.privacy,
+          })),
+        );
+      } catch (err) {
+        if (!cancelled) setPickerError(err instanceof Error ? err.message : 'Unknown error.');
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    }
+
+    load();
     return () => {
       cancelled = true;
     };
-  }, [step]);
+  }, [step, sourceProvider]);
 
-  const handlePickPlaylist = useCallback((pl: UserPlaylist) => {
-    setPicked({
-      sourcePlaylistId: pl.id,
-      defaultTitle: pl.title,
-      thumbnailUrl: pl.thumbnailUrl,
-    });
-    setTitle(pl.title);
-    setStep('setup');
-    setError(null);
-  }, []);
+  const handlePickPlaylist = useCallback(
+    (pl: UserPlaylist) => {
+      setPicked({
+        sourcePlaylistId: pl.id,
+        defaultTitle: pl.title,
+        thumbnailUrl: pl.thumbnailUrl,
+        provider: sourceProvider,
+      });
+      setTitle(pl.title);
+      setStep('setup');
+      setError(null);
+    },
+    [sourceProvider],
+  );
 
   const handlePickUrl = useCallback(async () => {
     const input = urlInput.trim();
     if (!input) return;
     setPickerError(null);
-    // Defer metadata fetch to the server when we publish; for the setup step we just need
-    // the raw input and can extract an ID client-side, but a quick validation round-trip
-    // to /api/playlist doubles as "does this playlist exist and resolve?" before the user
-    // spends time picking a title.
     try {
-      const res = await fetch(`/api/playlist?list=${encodeURIComponent(input)}`);
+      const endpoint =
+        sourceProvider === 'spotify'
+          ? `/api/spotify/playlist?list=${encodeURIComponent(input)}`
+          : `/api/playlist?list=${encodeURIComponent(input)}`;
+      const res = await fetch(endpoint);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Could not load this playlist.');
       setPicked({
         sourcePlaylistId: data.id,
         defaultTitle: data.name,
         thumbnailUrl: data.songs?.[0]?.thumbnailUrl ?? null,
+        provider: sourceProvider,
       });
       setTitle(data.name);
       setStep('setup');
     } catch (err) {
       setPickerError(err instanceof Error ? err.message : 'Unknown error.');
     }
-  }, [urlInput]);
+  }, [urlInput, sourceProvider]);
 
   const handlePublish = useCallback(async () => {
     if (!picked) return;
@@ -106,7 +201,7 @@ export function NewRoomWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
-          sourceProvider: 'youtube',
+          sourceProvider: picked.provider,
           sourcePlaylistId: picked.sourcePlaylistId,
           presetKey,
           generatedPreset: presetKey === 'custom' ? generatedPreset : undefined,
@@ -146,6 +241,19 @@ export function NewRoomWizard() {
       setGenerating(false);
     }
   }, [customPrompt]);
+
+  const placeholderUrl =
+    sourceProvider === 'spotify'
+      ? 'https://open.spotify.com/playlist/...'
+      : 'https://www.youtube.com/playlist?list=...';
+  const pickHeading =
+    sourceProvider === 'spotify'
+      ? 'Spotify 플레이리스트 선택'
+      : 'Pick a YouTube playlist';
+  const mineHeading =
+    sourceProvider === 'spotify' ? 'Your Spotify playlists' : 'Your YouTube playlists';
+  const providerLabel = sourceProvider === 'spotify' ? 'Spotify playlist' : 'YouTube playlist';
+  const showConnectCta = sourceProvider === 'spotify' && spotifyConnected === false;
 
   return (
     <main className="min-h-dvh w-full bg-matte-black text-cream-white">
@@ -220,102 +328,151 @@ export function NewRoomWizard() {
 
         {step === 'pick' && (
           <>
+            {/* Source toggle — horizontal segmented control. Switching clears
+                the current selection implicitly via the useEffect reload. */}
+            <div
+              role="tablist"
+              aria-label="Playlist source"
+              className="flex gap-1 p-1 rounded-full bg-vinyl-black border border-cream-white/10 self-start"
+            >
+              {(['youtube', 'spotify'] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  role="tab"
+                  aria-selected={sourceProvider === p}
+                  onClick={() => setSourceProvider(p)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-sans font-semibold transition-colors ${
+                    sourceProvider === p
+                      ? 'bg-warm-amber text-matte-black'
+                      : 'text-cream-white/60 hover:text-cream-white'
+                  }`}
+                >
+                  {p === 'youtube' ? 'YouTube' : 'Spotify'}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-col gap-2">
-              <h2 className="text-lg font-sans font-semibold">
-                Pick a YouTube playlist
-              </h2>
+              <h2 className="text-lg font-sans font-semibold">{pickHeading}</h2>
               <p className="text-sm font-sans text-cream-white/60">
-                Choose one of your playlists, or paste a public YouTube
-                playlist URL.
+                {sourceProvider === 'spotify'
+                  ? '본인 계정의 플레이리스트에서 고르거나, 공개 Spotify 플레이리스트 URL을 붙여 넣으세요.'
+                  : 'Choose one of your playlists, or paste a public YouTube playlist URL.'}
               </p>
             </div>
 
-            {/* URL fallback */}
-            <div className="flex flex-col gap-2 p-4 rounded-xl bg-vinyl-black border border-cream-white/5">
-              <label
-                htmlFor="yt-url"
-                className="text-xs font-sans text-cream-white/60"
-              >
-                Paste a playlist URL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="yt-url"
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="https://www.youtube.com/playlist?list=..."
-                  className="flex-1 bg-matte-black border border-cream-white/15 rounded-lg px-3 py-2 text-sm font-sans text-cream-white placeholder:text-cream-white/25 outline-none focus:border-warm-amber/60 transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={handlePickUrl}
-                  disabled={!urlInput.trim()}
-                  className="px-4 py-2 rounded-lg bg-warm-amber text-matte-black text-sm font-sans font-semibold hover:bg-warm-amber/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-                >
-                  Use
-                </button>
-              </div>
-              {pickerError && (
-                <p className="text-xs font-sans text-red-400">{pickerError}</p>
-              )}
-            </div>
-
-            {/* My playlists from YouTube */}
-            <div className="flex flex-col gap-3">
-              <h3 className="text-xs font-sans text-cream-white/60 uppercase tracking-wider">
-                Your YouTube playlists
-              </h3>
-              {fetching && (
-                <div className="flex items-center justify-center py-6">
-                  <div className="w-5 h-5 border-2 border-warm-amber/30 border-t-warm-amber rounded-full animate-spin" />
-                </div>
-              )}
-              {!fetching && playlists.length === 0 && !pickerError && (
-                <p className="text-sm text-cream-white/40 text-center py-6">
-                  No playlists found on your YouTube account.
+            {showConnectCta ? (
+              <div className="flex flex-col gap-3 p-5 rounded-xl bg-vinyl-black border border-warm-amber/30">
+                <p className="text-sm font-sans text-cream-white">
+                  Spotify 계정을 연결하면 본인 플레이리스트를 방으로 만들 수 있어요.
                 </p>
-              )}
-              <div className="flex flex-col gap-2">
-                {playlists.map((pl) => (
-                  <button
-                    key={pl.id}
-                    type="button"
-                    onClick={() => handlePickPlaylist(pl)}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-vinyl-black border border-cream-white/5 hover:border-cream-white/20 transition-colors text-left"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={pl.thumbnailUrl}
-                      alt=""
-                      className="w-12 h-12 rounded object-cover flex-shrink-0 bg-matte-black"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-sans font-semibold text-cream-white truncate">
-                        {pl.title}
-                      </p>
-                      <p className="text-xs font-mono text-cream-white/40">
-                        {pl.itemCount} tracks · {pl.privacyStatus}
-                      </p>
-                    </div>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="text-cream-white/30 flex-shrink-0"
-                      aria-hidden
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                ))}
+                <a
+                  href={`/api/auth/spotify/connect?returnTo=${encodeURIComponent('/home/new')}`}
+                  className="self-start inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-warm-amber text-matte-black text-sm font-sans font-semibold hover:bg-warm-amber/90 transition-colors"
+                >
+                  Spotify 연결하기
+                </a>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* URL fallback */}
+                <div className="flex flex-col gap-2 p-4 rounded-xl bg-vinyl-black border border-cream-white/5">
+                  <label
+                    htmlFor="pl-url"
+                    className="text-xs font-sans text-cream-white/60"
+                  >
+                    Paste a playlist URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="pl-url"
+                      type="url"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      placeholder={placeholderUrl}
+                      className="flex-1 bg-matte-black border border-cream-white/15 rounded-lg px-3 py-2 text-sm font-sans text-cream-white placeholder:text-cream-white/25 outline-none focus:border-warm-amber/60 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={handlePickUrl}
+                      disabled={!urlInput.trim()}
+                      className="px-4 py-2 rounded-lg bg-warm-amber text-matte-black text-sm font-sans font-semibold hover:bg-warm-amber/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                    >
+                      Use
+                    </button>
+                  </div>
+                  {pickerError && (
+                    <p className="text-xs font-sans text-red-400">{pickerError}</p>
+                  )}
+                </div>
+
+                {/* My playlists — source-specific */}
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-xs font-sans text-cream-white/60 uppercase tracking-wider">
+                    {mineHeading}
+                  </h3>
+                  {fetching && (
+                    <div className="flex items-center justify-center py-6">
+                      <div className="w-5 h-5 border-2 border-warm-amber/30 border-t-warm-amber rounded-full animate-spin" />
+                    </div>
+                  )}
+                  {!fetching && playlists.length === 0 && !pickerError && (
+                    <p className="text-sm text-cream-white/40 text-center py-6">
+                      {sourceProvider === 'spotify'
+                        ? '플레이리스트가 없습니다.'
+                        : 'No playlists found on your YouTube account.'}
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    {playlists.map((pl) => (
+                      <button
+                        key={pl.id}
+                        type="button"
+                        onClick={() => handlePickPlaylist(pl)}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-vinyl-black border border-cream-white/5 hover:border-cream-white/20 transition-colors text-left"
+                      >
+                        {pl.thumbnailUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={pl.thumbnailUrl}
+                            alt=""
+                            className="w-12 h-12 rounded object-cover flex-shrink-0 bg-matte-black"
+                          />
+                        ) : (
+                          <div
+                            aria-hidden
+                            className="w-12 h-12 rounded flex-shrink-0 bg-matte-black/60"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-sans font-semibold text-cream-white truncate">
+                            {pl.title}
+                          </p>
+                          <p className="text-xs font-mono text-cream-white/40">
+                            {pl.itemCount} tracks · {pl.privacyLabel}
+                          </p>
+                        </div>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="text-cream-white/30 flex-shrink-0"
+                          aria-hidden
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -334,9 +491,7 @@ export function NewRoomWizard() {
                 <p className="text-sm font-sans font-semibold text-cream-white truncate">
                   {picked.defaultTitle}
                 </p>
-                <p className="text-xs font-mono text-cream-white/40">
-                  YouTube playlist
-                </p>
+                <p className="text-xs font-mono text-cream-white/40">{providerLabel}</p>
               </div>
               <button
                 type="button"
@@ -412,9 +567,7 @@ export function NewRoomWizard() {
                   </label>
                 ))}
 
-                {/* Custom AI preset slot. Swatch uses the generated palette once
-                    available, otherwise shows a "sparkles" glyph on a neutral
-                    gradient. */}
+                {/* Custom AI preset slot. */}
                 <label
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${
                     presetKey === 'custom'

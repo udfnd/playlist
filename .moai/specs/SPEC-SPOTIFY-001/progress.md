@@ -1,0 +1,27 @@
+## SPEC-SPOTIFY-001 Progress
+
+- Started: 2026-04-21
+- Harness level: standard
+- Development mode: tdd
+- Execution mode: sub-agent (solo)
+- Language skill: moai-lang-typescript
+- Scale-based mode: Standard (plan scopes ~12 files, 2 domains: backend + frontend)
+- T-001 complete: src/lib/spotify/oauth.ts, src/lib/spotify/__tests__/oauth.test.ts · tests 12/12 · drift 0
+- T-002 complete: src/lib/spotify/client.ts, src/lib/spotify/__tests__/client.test.ts, src/lib/spotify/__tests__/_helpers.ts · tests 5/5 · drift 0
+- T-003 complete: src/lib/spotify/fetch-playlist.ts, src/lib/spotify/__tests__/fetch-playlist.test.ts · tests 6/6 · drift 0
+- Session verification: full suite 88/88 GREEN · tsc clean · lint clean (3 pre-existing unrelated warnings) · no migrations added
+- T-004 complete: src/app/api/auth/spotify/connect/route.ts, src/app/api/auth/spotify/connect/__tests__/route.test.ts · tests 5/5 · drift 0
+- T-005 complete: src/app/api/auth/spotify/callback/route.ts, src/app/api/auth/spotify/callback/__tests__/route.test.ts · tests 5/5 · drift 0
+- T-006 complete: src/app/api/auth/spotify/disconnect/route.ts, src/app/api/auth/spotify/disconnect/__tests__/route.test.ts · tests 2/2 · drift 0
+- T-007 complete: src/app/api/me/spotify/playlists/route.ts, src/app/api/me/spotify/playlists/__tests__/route.test.ts · tests 4/4 · drift 0
+- T-008 complete: src/app/api/spotify/playlist/route.ts, src/app/api/spotify/playlist/__tests__/route.test.ts · tests 5/5 · drift 0
+- Session verification (T-004..T-008): full suite 109/109 GREEN · tsc clean · lint clean (3 pre-existing unrelated scripts/*.mjs warnings) · no migrations added
+- T-009 complete: src/app/api/me/spotify/status/route.ts, src/app/api/me/spotify/status/__tests__/route.test.ts, src/app/home/new/NewRoomWizard.tsx (modified), src/app/home/new/__tests__/NewRoomWizard.test.tsx · tests 7/7 · drift 0
+- T-010 complete: src/app/[handle]/[slug]/page.tsx (modified) · tests N/A (server component; acceptance deferred to manual E2E) · drift 0
+- T-011 complete: src/app/[handle]/[slug]/RoomCarousel.tsx (modified), src/components/scene/SongCarousel.tsx (drift: prop forwarding only), src/components/ui/SongView.tsx (drift: Spotify embed branch) · tests N/A · drift 2 (necessary prop-drill into existing YouTube rendering pipeline)
+- T-012 complete: src/app/home/page.tsx (modified), src/app/home/SpotifyStatus.tsx (new client subcomponent) · tests N/A · drift 1 (SpotifyStatus.tsx — necessary server/client split)
+- T-013 complete: next.config.ts (modified, added CSP headers with frame-src for open.spotify.com) · tests N/A · drift 0
+- T-014 complete: .env.example (appended Spotify vars), README.md (appended "Spotify 연결 설정" section) · tests N/A · drift 0
+- Final session verification: full suite 116/116 GREEN · tsc clean · lint clean (3 pre-existing unrelated scripts/*.mjs warnings) · no migrations added · no tokens in client components (only server files: page.tsx, callback/route.ts) · MX tags intact on client.ts and fetch-playlist.ts
+- Simplify pass complete: 3 medium findings applied (empty-src guard in NewRoomWizard, parallelized /home queries, parallelized fetch-playlist metadata+tracks). Low findings deferred (provider type dedup, cookie helper extraction) — low value/risk.
+- Simplify verification: 116/116 GREEN · tsc clean · lint clean

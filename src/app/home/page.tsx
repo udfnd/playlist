@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { auth, signOut } from '@/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { RoomCard, type RoomCardData } from './RoomCard';
+import { SpotifyStatus } from './SpotifyStatus';
 
 export const metadata: Metadata = {
   title: 'Your rooms — onrepeat',
@@ -24,15 +25,28 @@ export default async function HomePage() {
   if (!session.handle) redirect('/');
 
   const supabase = getSupabaseAdmin();
-  const { data: rooms, error } = await supabase
-    .from('rooms')
-    .select('id, slug, title, visibility, created_at')
-    .eq('user_id', session.userId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('[home] rooms load failed:', error);
+  // Probe rooms and Spotify-connection state in parallel — the queries are
+  // independent and running them sequentially costs a full Supabase RTT per
+  // page load. Spotify presence is read server-side so the chip renders
+  // without a client fetch; only presence is exposed, never the tokens.
+  const [roomsResult, connResult] = await Promise.all([
+    supabase
+      .from('rooms')
+      .select('id, slug, title, visibility, created_at')
+      .eq('user_id', session.userId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('music_connections')
+      .select('user_id')
+      .eq('user_id', session.userId)
+      .eq('provider', 'spotify')
+      .maybeSingle(),
+  ]);
+  const rooms = roomsResult.data;
+  if (roomsResult.error) {
+    console.error('[home] rooms load failed:', roomsResult.error);
   }
+  const spotifyConnected = Boolean(connResult.data);
 
   const roomList: RoomCardData[] = (rooms ?? []).map((r) => ({
     id: r.id,
@@ -77,6 +91,10 @@ export default async function HomePage() {
       </header>
 
       <section className="max-w-3xl mx-auto px-5 py-10 flex flex-col gap-8">
+        <div className="flex items-center gap-3">
+          <SpotifyStatus connected={spotifyConnected} />
+        </div>
+
         <div className="flex items-end justify-between gap-4">
           <div className="flex flex-col gap-1.5">
             <h1 className="text-2xl font-sans font-bold tracking-tight">

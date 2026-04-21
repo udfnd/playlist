@@ -25,6 +25,13 @@ type TransitionPhase = 'idle' | 'animating' | 'open';
 
 interface SongCarouselProps {
   playlist: Playlist;
+  /**
+   * Playback provider for the selected track. Defaults to YouTube to keep
+   * backwards compatibility with pages that don't pass this prop. Spotify
+   * rooms render an `open.spotify.com/embed/track/{id}` iframe instead of
+   * using the YouTube JS iframe API.
+   */
+  playbackProvider?: 'youtube' | 'spotify';
   /** rooms.preset_key — picks the curated visual treatment when generatedPreset is null. */
   presetKey?: string | null;
   /** rooms.generated_preset — an LLM-produced Preset minus the key. Takes priority. */
@@ -33,6 +40,7 @@ interface SongCarouselProps {
 
 export default function SongCarousel({
   playlist,
+  playbackProvider = 'youtube',
   presetKey,
   generatedPreset,
 }: SongCarouselProps) {
@@ -53,7 +61,9 @@ export default function SongCarousel({
     '--aurora-c': hexToRgbTriplet(preset.aurora.c),
   } as React.CSSProperties;
   const { songs } = playlist;
-  const hasYouTube = songs.some((s) => s.videoId);
+  // Only wire up the YouTube JS API when we're actually playing YouTube
+  // tracks. Spotify rooms embed via a plain iframe and have no JS player.
+  const hasYouTube = playbackProvider === 'youtube' && songs.some((s) => s.videoId);
 
   // Repeat songs to fill the carousel if fewer than MIN_CARDS
   const displayCards = useMemo(() => {
@@ -209,6 +219,7 @@ export default function SongCarousel({
             song={selectedSong}
             songIndex={selectedSongIndex}
             onClose={handleClose}
+            playbackProvider={playbackProvider}
             {...(hasYouTube
               ? { youtubePlayer: ytPlayer }
               : {

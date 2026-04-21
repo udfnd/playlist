@@ -10,6 +10,11 @@ interface SongViewProps {
   song: Song;
   songIndex: number;
   onClose: () => void;
+  /**
+   * Which provider the track ID belongs to. 'spotify' renders the
+   * open.spotify.com embed iframe in place of the YouTube player slot.
+   */
+  playbackProvider?: 'youtube' | 'spotify';
   // YouTube player integration (optional — falls back to mock playback)
   youtubePlayer?: {
     isPlaying: boolean;
@@ -29,6 +34,7 @@ export function SongView({
   song,
   songIndex,
   onClose,
+  playbackProvider = 'youtube',
   youtubePlayer,
   isPlaying: mockIsPlaying,
   progress: mockProgress,
@@ -110,12 +116,25 @@ export function SongView({
             />
           )}
 
-          {/* YouTube player */}
-          {song.videoId && (
+          {/* Player — YouTube uses the JS iframe API injected into the
+              container ref; Spotify uses a plain embed iframe. Only one of
+              the two is ever rendered per room. */}
+          {song.videoId && playbackProvider === 'youtube' && (
             <div className="w-full mt-2">
               <div
                 ref={youtubePlayer?.containerRef}
                 className="relative w-full rounded-lg overflow-hidden [aspect-ratio:16/9] [&>iframe]:absolute [&>iframe]:inset-0 [&>iframe]:w-full [&>iframe]:h-full"
+              />
+            </div>
+          )}
+          {song.videoId && playbackProvider === 'spotify' && (
+            <div className="w-full mt-2">
+              <iframe
+                src={`https://open.spotify.com/embed/track/${encodeURIComponent(song.videoId)}`}
+                title={song.title}
+                allow="encrypted-media; clipboard-write"
+                loading="lazy"
+                className="w-full rounded-lg [aspect-ratio:16/9]"
               />
             </div>
           )}

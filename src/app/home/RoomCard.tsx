@@ -13,6 +13,8 @@ export interface RoomCardData {
   visibility: Visibility;
   created_at: string;
   handle: string;
+  // @MX:SPEC: SPEC-SOCIAL-001 — number of pending suggestions for this room
+  pendingCount?: number;
 }
 
 interface RoomCardProps {
@@ -159,7 +161,7 @@ export function RoomCard({ room }: RoomCardProps) {
         <p className="text-xs font-mono text-cream-white/40 truncate">
           onrepeat.cc/{room.handle}/{room.slug}
         </p>
-        <div className="flex items-center gap-2 text-xs font-sans">
+        <div className="flex items-center gap-2 text-xs font-sans flex-wrap">
           <span className={`inline-flex items-center gap-1.5 ${badge.text}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} aria-hidden />
             {badge.label}
@@ -168,6 +170,14 @@ export function RoomCard({ room }: RoomCardProps) {
           <span className="text-cream-white/40">
             {formatRelative(room.created_at)}
           </span>
+          {room.pendingCount != null && room.pendingCount > 0 && (
+            <>
+              <span className="text-cream-white/20" aria-hidden>·</span>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-warm-amber/20 text-warm-amber border border-warm-amber/30">
+                대기 중 {room.pendingCount}건
+              </span>
+            </>
+          )}
         </div>
       </Link>
 

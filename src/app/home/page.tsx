@@ -48,6 +48,23 @@ export default async function HomePage() {
   }
   const spotifyConnected = Boolean(connResult.data);
 
+  // @MX:SPEC: SPEC-SOCIAL-001 — pending-suggestion count per owned room.
+  // Cast to untyped client: track_suggestions is not in the generated types.
+  const roomIds = (rooms ?? []).map((r) => r.id);
+  const pendingByRoom = new Map<string, number>();
+  if (roomIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const untyped = supabase as unknown as any;
+    const { data: pending } = await untyped
+      .from('track_suggestions')
+      .select('room_id')
+      .eq('status', 'pending')
+      .in('room_id', roomIds);
+    for (const row of (pending ?? []) as Array<{ room_id: string }>) {
+      pendingByRoom.set(row.room_id, (pendingByRoom.get(row.room_id) ?? 0) + 1);
+    }
+  }
+
   const roomList: RoomCardData[] = (rooms ?? []).map((r) => ({
     id: r.id,
     slug: r.slug,
@@ -55,6 +72,7 @@ export default async function HomePage() {
     visibility: r.visibility as RoomCardData['visibility'],
     created_at: r.created_at,
     handle: session.handle!,
+    pendingCount: pendingByRoom.get(r.id) ?? 0,
   }));
 
   async function handleSignOut() {

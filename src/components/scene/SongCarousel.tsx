@@ -36,6 +36,9 @@ interface SongCarouselProps {
   presetKey?: string | null;
   /** rooms.generated_preset — an LLM-produced Preset minus the key. Takes priority. */
   generatedPreset?: Omit<Preset, 'key'> | null;
+  // @MX:SPEC: SPEC-SOCIAL-001 — reaction wiring (optional for backward compat)
+  roomId?: string;
+  reactions?: Record<string, Array<{ emoji: string; count: number }>>;
 }
 
 export default function SongCarousel({
@@ -43,6 +46,8 @@ export default function SongCarousel({
   playbackProvider = 'youtube',
   presetKey,
   generatedPreset,
+  roomId,
+  reactions,
 }: SongCarouselProps) {
   // LLM-generated rooms win; fall back to a curated preset, defaulting to the first.
   const preset: Preset = generatedPreset
@@ -220,6 +225,10 @@ export default function SongCarousel({
             songIndex={selectedSongIndex}
             onClose={handleClose}
             playbackProvider={playbackProvider}
+            roomId={roomId}
+            trackReactions={
+              reactions?.[selectedSong.videoId ?? selectedSong.id] ?? []
+            }
             {...(hasYouTube
               ? { youtubePlayer: ytPlayer }
               : {

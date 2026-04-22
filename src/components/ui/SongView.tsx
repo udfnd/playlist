@@ -5,6 +5,9 @@ import type { Song } from '@/data/types';
 import { PlaybackControls } from '@/components/ui/PlaybackControls';
 import { generateCoverDataUrl } from '@/lib/cover-generator';
 import { formatDuration } from '@/lib/format';
+import { ReactionPicker } from '@/app/[handle]/[slug]/ReactionPicker';
+import { ReactionBadges } from '@/app/[handle]/[slug]/ReactionBadges';
+import type { ReactionEmoji } from '@/data/reactions';
 
 interface SongViewProps {
   song: Song;
@@ -28,6 +31,9 @@ interface SongViewProps {
   isPlaying?: boolean;
   progress?: number;
   onToggle?: () => void;
+  // @MX:SPEC: SPEC-SOCIAL-001 — reactions (optional, only shown when roomId is given)
+  roomId?: string;
+  trackReactions?: Array<{ emoji: string; count: number }>;
 }
 
 export function SongView({
@@ -39,6 +45,8 @@ export function SongView({
   isPlaying: mockIsPlaying,
   progress: mockProgress,
   onToggle: mockOnToggle,
+  roomId,
+  trackReactions,
 }: SongViewProps) {
   const coverUrl = useMemo(
     () =>
@@ -104,7 +112,24 @@ export function SongView({
             <p className="text-xs font-mono text-cream-white/40 mt-1">
               {formatDuration(duration)}
             </p>
+            {song.isSuggested && (
+              <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-full bg-warm-amber/20 border border-warm-amber/40 text-[11px] font-sans text-warm-amber">
+                추천
+              </span>
+            )}
           </div>
+
+          {/* @MX:SPEC: SPEC-SOCIAL-001 — per-track reaction UI */}
+          {roomId && (
+            <div className="w-full flex flex-col items-center gap-2">
+              <ReactionBadges counts={trackReactions ?? []} />
+              <ReactionPicker
+                roomId={roomId}
+                trackRef={song.videoId ?? song.id}
+                initialMine={new Set<ReactionEmoji>()}
+              />
+            </div>
+          )}
 
           {/* Playback controls */}
           {handleToggle && (

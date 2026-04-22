@@ -9,6 +9,9 @@ export interface Song {
   lyrics: string;
   videoId?: string; // YouTube video ID
   thumbnailUrl?: string; // YouTube thumbnail URL
+  // @MX:SPEC: SPEC-SOCIAL-001
+  // Marks tracks appended from approved `room_extra_tracks`. Additive only.
+  isSuggested?: boolean;
 }
 
 export interface Playlist {

@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import type { Playlist } from '@/data/types';
 import type { GeneratedPreset } from '@/lib/presets/types';
+import type { RoomReactionsMap } from './page';
+import { SuggestTrackButton } from './SuggestTrackButton';
+import { OwnerSuggestionQueue } from './OwnerSuggestionQueue';
 
 const SongCarousel = dynamic(
   () => import('@/components/scene/SongCarousel'),
@@ -23,6 +26,13 @@ interface RoomCarouselProps {
   playbackProvider: 'youtube' | 'spotify';
   presetKey: string | null;
   generatedPreset: GeneratedPreset | null;
+  // @MX:SPEC: SPEC-SOCIAL-001
+  roomId: string;
+  reactions: RoomReactionsMap;
+  viewerUserId: string | null;
+  isOwner: boolean;
+  isLoggedIn: boolean;
+  isSpotifyConnected: boolean;
 }
 
 export function RoomCarousel({
@@ -32,8 +42,16 @@ export function RoomCarousel({
   playbackProvider,
   presetKey,
   generatedPreset,
+  roomId,
+  reactions,
+  viewerUserId: _viewerUserId,
+  isOwner,
+  isLoggedIn,
+  isSpotifyConnected,
 }: RoomCarouselProps) {
+  void _viewerUserId;
   const [copied, setCopied] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
 
   const handleShare = useCallback(async () => {
     const url = window.location.href;
@@ -63,6 +81,8 @@ export function RoomCarousel({
         playbackProvider={playbackProvider}
         presetKey={presetKey}
         generatedPreset={generatedPreset}
+        roomId={roomId}
+        reactions={reactions}
       />
 
       {/* Room header — thin, translucent, sits on top of the 3D scene */}
@@ -109,6 +129,59 @@ export function RoomCarousel({
           </button>
         </div>
       </div>
+
+      {/* @MX:SPEC: SPEC-SOCIAL-001 — suggestion entry point + owner queue */}
+      <div
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 right-0 z-[60] flex items-center justify-center gap-2 px-4 pointer-events-none"
+      >
+        <div className="pointer-events-auto flex items-center gap-2">
+          <SuggestTrackButton
+            roomId={roomId}
+            sourceProvider={playbackProvider}
+            isLoggedIn={isLoggedIn}
+            isSpotifyConnected={isSpotifyConnected}
+          />
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setQueueOpen((v) => !v)}
+              className="px-3 py-1.5 rounded-full bg-matte-black/60 backdrop-blur-md border border-cream-white/15 text-cream-white/80 hover:text-cream-white hover:border-cream-white/30 transition-colors text-xs font-sans"
+            >
+              {queueOpen ? '추천 닫기' : '추천 관리'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isOwner && queueOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-matte-black/70 backdrop-blur-md p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setQueueOpen(false);
+          }}
+        >
+          <div className="w-full max-w-md bg-vinyl-black border border-cream-white/10 rounded-xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-cream-white/10">
+              <h2 className="text-sm font-sans font-semibold text-cream-white">
+                추천 관리
+              </h2>
+              <button
+                type="button"
+                onClick={() => setQueueOpen(false)}
+                aria-label="닫기"
+                className="text-cream-white/50 hover:text-cream-white"
+              >
+                ×
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4">
+              <OwnerSuggestionQueue roomId={roomId} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

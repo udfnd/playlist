@@ -7,10 +7,18 @@ import { fetchYouTubePlaylist, type AuthMethod } from '@/lib/youtube/fetch-playl
 import { fetchSpotifyPlaylist } from '@/lib/spotify/fetch-playlist';
 import { SpotifyUnavailableError } from '@/lib/spotify/client';
 import { RoomCarousel } from './RoomCarousel';
-import type { Playlist } from '@/data/types';
+import type { Playlist, Song } from '@/data/types';
 import type { GeneratedPreset } from '@/lib/presets/types';
+import type { ReactionEmoji } from '@/data/reactions';
 
 type PlaybackProvider = 'youtube' | 'spotify';
+
+// @MX:SPEC: SPEC-SOCIAL-001
+export interface TrackReactionAggregate {
+  emoji: ReactionEmoji | string;
+  count: number;
+}
+export type RoomReactionsMap = Record<string, TrackReactionAggregate[]>;
 
 interface RoomPageParams {
   handle: string;
@@ -21,17 +29,92 @@ interface RoomPageParams {
 // path segments as parallel route slot references, so a URL like /@seungmok/my-room
 // never reaches this dynamic route. The UI surfaces the "@" only as display chrome.
 
+async function loadExtrasAndReactions(
+  roomId: string,
+): Promise<{ extras: Song[]; reactions: RoomReactionsMap }> {
+  // Cast to untyped client — new social-layer tables are not yet in the
+  // generated Database types. Same pattern used in src/lib/reactions/service.ts.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = getSupabaseAdmin() as unknown as any;
+  // @MX:SPEC: SPEC-SOCIAL-001 — approved suggestions appended to playlist.
+  const [extrasRes, reactionsRes] = await Promise.all([
+    supabase
+      .from('room_extra_tracks')
+      .select(
+        'position, suggestion_id, track_suggestions!inner(id, status, external_track_id, title, artist, thumbnail_url, duration_sec)',
+      )
+      .eq('room_id', roomId)
+      .order('position', { ascending: true }),
+    supabase
+      .from('track_reactions')
+      .select('track_ref, emoji')
+      .eq('room_id', roomId),
+  ]);
+
+  const extras: Song[] = [];
+  const extraRows = (extrasRes.data ?? []) as unknown as Array<{
+    position: number;
+    suggestion_id: string;
+    track_suggestions: {
+      id: string;
+      status: string;
+      external_track_id: string;
+      title: string;
+      artist: string;
+      thumbnail_url: string | null;
+      duration_sec: number | null;
+    } | null;
+  }>;
+  for (const row of extraRows) {
+    const s = row.track_suggestions;
+    if (!s || s.status !== 'approved') continue;
+    extras.push({
+      id: `extra-${s.id}`,
+      title: s.title,
+      artist: s.artist,
+      albumName: '',
+      coverUrl: s.thumbnail_url ?? '',
+      color: '#B8860B',
+      duration: s.duration_sec ?? 0,
+      lyrics: '',
+      videoId: s.external_track_id,
+      thumbnailUrl: s.thumbnail_url ?? undefined,
+      isSuggested: true,
+    });
+  }
+
+  const reactions: RoomReactionsMap = {};
+  const reactionRows = (reactionsRes.data ?? []) as unknown as Array<{
+    track_ref: string;
+    emoji: string;
+  }>;
+  const counts = new Map<string, number>();
+  for (const row of reactionRows) {
+    const key = `${row.track_ref}::${row.emoji}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  for (const [key, count] of counts) {
+    const [trackRef, emoji] = key.split('::');
+    (reactions[trackRef] ??= []).push({ emoji, count });
+  }
+
+  return { extras, reactions };
+}
+
 async function loadRoomAndPlaylist(
   params: RoomPageParams,
 ): Promise<
   | {
       ok: true;
+      roomId: string;
+      ownerUserId: string;
       title: string;
       ownerHandle: string;
       playlist: Playlist;
       playbackProvider: PlaybackProvider;
       presetKey: string | null;
       generatedPreset: GeneratedPreset | null;
+      reactions: RoomReactionsMap;
     }
   | { ok: false; reason: 'not-found' | 'unavailable' }
 > {
@@ -68,15 +151,24 @@ async function loadRoomAndPlaylist(
   // not "try the YouTube API key". This preserves owner-facing reconnect UX.
   if (room.source_provider === 'spotify') {
     try {
-      const playlist = await fetchSpotifyPlaylist(room.user_id, room.source_playlist_id);
+      const [playlist, extrasAndReactions] = await Promise.all([
+        fetchSpotifyPlaylist(room.user_id, room.source_playlist_id),
+        loadExtrasAndReactions(room.id),
+      ]);
       return {
         ok: true,
+        roomId: room.id,
+        ownerUserId: room.user_id,
         title: room.title,
         ownerHandle: owner.handle!,
-        playlist,
+        playlist: {
+          ...playlist,
+          songs: [...playlist.songs, ...extrasAndReactions.extras],
+        },
         playbackProvider: 'spotify',
         presetKey: room.preset_key ?? null,
         generatedPreset: (room.generated_preset as GeneratedPreset | null) ?? null,
+        reactions: extrasAndReactions.reactions,
       };
     } catch (err) {
       if (err instanceof SpotifyUnavailableError) {
@@ -112,15 +204,24 @@ async function loadRoomAndPlaylist(
   }
 
   try {
-    const playlist = await fetchYouTubePlaylist(room.source_playlist_id, authMethod);
+    const [playlist, extrasAndReactions] = await Promise.all([
+      fetchYouTubePlaylist(room.source_playlist_id, authMethod),
+      loadExtrasAndReactions(room.id),
+    ]);
     return {
       ok: true,
+      roomId: room.id,
+      ownerUserId: room.user_id,
       title: room.title,
       ownerHandle: owner.handle!,
-      playlist,
+      playlist: {
+        ...playlist,
+        songs: [...playlist.songs, ...extrasAndReactions.extras],
+      },
       playbackProvider: 'youtube',
       presetKey: room.preset_key ?? null,
       generatedPreset: (room.generated_preset as GeneratedPreset | null) ?? null,
+      reactions: extrasAndReactions.reactions,
     };
   } catch (err) {
     console.error('[room] playlist fetch failed:', err);
@@ -175,7 +276,25 @@ export default async function RoomPage({
   params: Promise<RoomPageParams>;
 }) {
   const p = await params;
-  const result = await loadRoomAndPlaylist(p);
+  const [result, session] = await Promise.all([
+    loadRoomAndPlaylist(p),
+    auth(),
+  ]);
+  const viewerUserId = session?.userId ?? null;
+
+  // @MX:SPEC: SPEC-SOCIAL-001 — determine Spotify connection presence server-side
+  // so the SuggestTrackButton can show the right gate label. Presence only, no token.
+  let isSpotifyConnected = false;
+  if (viewerUserId) {
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase
+      .from('music_connections')
+      .select('user_id')
+      .eq('user_id', viewerUserId)
+      .eq('provider', 'spotify')
+      .maybeSingle();
+    isSpotifyConnected = Boolean(data);
+  }
 
   if (!result.ok) {
     if (result.reason === 'not-found') notFound();
@@ -196,6 +315,8 @@ export default async function RoomPage({
     );
   }
 
+  const isOwner = Boolean(viewerUserId && viewerUserId === result.ownerUserId);
+
   return (
     <RoomCarousel
       playlist={result.playlist}
@@ -204,6 +325,12 @@ export default async function RoomPage({
       playbackProvider={result.playbackProvider}
       presetKey={result.presetKey}
       generatedPreset={result.generatedPreset}
+      roomId={result.roomId}
+      reactions={result.reactions}
+      viewerUserId={viewerUserId}
+      isOwner={isOwner}
+      isLoggedIn={Boolean(viewerUserId)}
+      isSpotifyConnected={isSpotifyConnected}
     />
   );
 }

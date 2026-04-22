@@ -158,6 +158,15 @@ html, body {
   .carousel-aurora {
     animation: none;
   }
+  /* Freeze the onrepeat. textPath marquee for motion-sensitive users. */
+  .onrepeat-track animate {
+    animation: none;
+  }
+  .onrepeat-track [attributeName="startOffset"] {
+    /* SMIL <animate> nodes cannot be paused via CSS directly; the display
+       hack stops them from applying by removing them from the render tree. */
+    display: none;
+  }
 }
 
 

@@ -25,3 +25,4 @@
 - Final session verification: full suite 116/116 GREEN · tsc clean · lint clean (3 pre-existing unrelated scripts/*.mjs warnings) · no migrations added · no tokens in client components (only server files: page.tsx, callback/route.ts) · MX tags intact on client.ts and fetch-playlist.ts
 - Simplify pass complete: 3 medium findings applied (empty-src guard in NewRoomWizard, parallelized /home queries, parallelized fetch-playlist metadata+tracks). Low findings deferred (provider type dedup, cookie helper extraction) — low value/risk.
 - Simplify verification: 116/116 GREEN · tsc clean · lint clean
+- Sync complete: spec.md frontmatter status=completed, Implementation Notes appended, project docs (product/tech/structure) updated with Spotify context

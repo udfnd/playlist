@@ -1,7 +1,7 @@
 ---
 title: Project Structure
 project: playlist
-updated: 2026-04-14
+updated: 2026-04-22
 ---
 
 # Project Structure
@@ -10,79 +10,95 @@ updated: 2026-04-14
 
 ```
 playlist/
-├── public/                     # Static assets served at root path
-│   ├── file.svg
-│   ├── globe.svg
-│   ├── next.svg
-│   ├── vercel.svg
-│   └── window.svg
+├── public/                         # Static assets
+├── supabase/
+│   └── migrations/                 # 2 SQL migration files
 ├── src/
-│   └── app/                    # Next.js App Router root
-│       ├── favicon.ico         # Browser tab icon
-│       ├── globals.css         # Global styles and Tailwind 4 theme tokens
-│       ├── layout.tsx          # Root layout (font loading, HTML shell)
-│       └── page.tsx            # Home page route (/)
-├── .moai/                      # MoAI project workspace (non-source)
-├── .claude/                    # Claude Code configuration and agents
-├── eslint.config.mjs           # ESLint 9 flat config
-├── next.config.ts              # Next.js configuration (TypeScript)
-├── next-env.d.ts               # Next.js TypeScript declarations (auto-generated)
-├── package.json                # npm dependencies and scripts
-├── postcss.config.mjs          # PostCSS configuration (Tailwind plugin)
-└── tsconfig.json               # TypeScript compiler options
+│   ├── app/
+│   │   ├── layout.tsx              # Root layout (font, metadata)
+│   │   ├── page.tsx                # Landing page (/)
+│   │   ├── globals.css
+│   │   ├── auth/                   # NextAuth sign-in UI
+│   │   ├── home/
+│   │   │   ├── page.tsx            # Authenticated home (Server Component)
+│   │   │   ├── SpotifyStatus.tsx   # Client subcomponent (Connect/Disconnect)
+│   │   │   └── new/
+│   │   │       └── NewRoomWizard.tsx
+│   │   ├── [handle]/
+│   │   │   ├── page.tsx            # Public user profile
+│   │   │   └── [slug]/
+│   │   │       ├── page.tsx        # Room page
+│   │   │       └── RoomCarousel.tsx
+│   │   └── api/
+│   │       ├── auth/
+│   │       │   └── spotify/        # connect / callback / disconnect
+│   │       ├── me/
+│   │       │   ├── rooms/          # Room CRUD
+│   │       │   └── spotify/
+│   │       │       ├── playlists/  # User's Spotify playlists
+│   │       │       └── status/     # Connection probe
+│   │       ├── my-playlists/       # YouTube playlists
+│   │       ├── playlist/           # YouTube public playlist resolver
+│   │       ├── spotify/
+│   │       │   └── playlist/       # Spotify public playlist resolver
+│   │       ├── presets/            # AI palette generation
+│   │       └── og/                 # OG image generation
+│   ├── components/
+│   │   ├── scene/
+│   │   │   ├── SongCarousel.tsx    # R3F 3D carousel
+│   │   │   └── ...
+│   │   └── ui/
+│   │       ├── SongView.tsx        # Track view + embed iframe (YouTube/Spotify)
+│   │       └── ...
+│   ├── lib/
+│   │   ├── youtube/
+│   │   │   └── fetch-playlist.ts
+│   │   ├── spotify/
+│   │   │   ├── oauth.ts
+│   │   │   ├── client.ts           # @MX:WARN race-condition
+│   │   │   └── fetch-playlist.ts   # @MX:ANCHOR
+│   │   ├── presets/
+│   │   ├── supabase/
+│   │   ├── colors.ts
+│   │   ├── cover-generator.ts
+│   │   ├── format.ts
+│   │   ├── handle-validation.ts
+│   │   └── slug.ts
+│   ├── data/
+│   │   └── types.ts                # Playlist, Track, Room shared types
+│   ├── types/                      # Additional TypeScript types
+│   └── test/
+│       └── setup.ts                # Vitest global setup
+├── next.config.ts                  # CSP headers, Next.js config
+├── .env.example
+└── package.json
 ```
 
-## Key File Locations
-
-| File | Purpose |
-|---|---|
-| `src/app/layout.tsx` | Root layout: HTML shell, font CSS variables, global metadata |
-| `src/app/page.tsx` | Home route (`/`): currently the default Create Next App page |
-| `src/app/globals.css` | Global styles: Tailwind import, CSS custom properties, dark mode |
-| `next.config.ts` | Next.js configuration (currently default/empty) |
-| `tsconfig.json` | TypeScript compiler settings including path alias |
-| `eslint.config.mjs` | ESLint rules (flat config with Next.js and TypeScript presets) |
-| `postcss.config.mjs` | PostCSS pipeline with Tailwind CSS 4 plugin |
-
-## Architecture Pattern
-
-The project uses the **Next.js App Router** architecture introduced in Next.js 13 and now the default in Next.js 16.
-
-Key conventions:
-
-- **Server Components by default**: all components in `src/app/` are React Server Components unless marked with `"use client"`.
-- **File-based routing**: each `page.tsx` file under `src/app/` defines a route. Nested directories create nested URL paths.
-- **Layouts**: `layout.tsx` wraps all child routes at the same level and below, persisting across navigations.
-- **Special files**: `loading.tsx`, `error.tsx`, `not-found.tsx`, and `route.ts` have reserved purposes and can be added as needed.
-
-Current route map:
+## Route Map
 
 | URL | File | Type |
 |---|---|---|
-| `/` | `src/app/page.tsx` | Server Component |
+| `/` | `src/app/page.tsx` | Server Component (landing) |
+| `/home` | `src/app/home/page.tsx` | Server Component (authenticated) |
+| `/home/new` | `src/app/home/new/NewRoomWizard.tsx` | Client Component |
+| `/@:handle` | `src/app/[handle]/page.tsx` | Server Component (public profile) |
+| `/@:handle/:slug` | `src/app/[handle]/[slug]/page.tsx` | Server Component (room) |
+| `/api/auth/spotify/connect` | route.ts | OAuth redirect initiation |
+| `/api/auth/spotify/callback` | route.ts | OAuth code exchange + upsert |
+| `/api/auth/spotify/disconnect` | route.ts | Token deletion |
+| `/api/me/spotify/playlists` | route.ts | User's Spotify playlists |
+| `/api/me/spotify/status` | route.ts | Connection probe for wizard |
+| `/api/me/rooms` | route.ts | Room CRUD (authenticated) |
+| `/api/my-playlists` | route.ts | User's YouTube playlists |
+| `/api/playlist` | route.ts | YouTube public playlist resolver |
+| `/api/spotify/playlist` | route.ts | Spotify public playlist resolver |
+| `/api/presets` | route.ts | AI palette generation |
+| `/api/og` | route.ts | Dynamic OG image |
 
-## Module Organization
+## Architecture Conventions
 
-No domain modules exist yet. As features are added, the recommended convention is:
-
-```
-src/
-├── app/          # Routes and layouts (Next.js convention)
-├── components/   # Shared UI components (to be created)
-├── lib/          # Utilities, helpers, API clients (to be created)
-└── types/        # Shared TypeScript type definitions (to be created)
-```
-
-## Path Alias Configuration
-
-TypeScript and the Next.js bundler are configured with the `@/*` alias:
-
-```
-@/* -> ./src/*
-```
-
-This allows imports such as `import { Button } from "@/components/Button"` instead of relative paths.
-
-Configured in:
-- `tsconfig.json` under `compilerOptions.paths`
-- Automatically resolved by Next.js without additional bundler configuration
+- **Server Components 기본**: `src/app/` 내 모든 컴포넌트는 `"use client"` 없으면 RSC
+- **서버/클라이언트 경계**: `SpotifyStatus.tsx`처럼 인터랙션이 필요한 부분만 client subcomponent로 분리
+- **토큰 보안**: Spotify/Google OAuth 토큰은 서버 사이드(`service-role`)에서만 접근
+- **공유 타입**: `src/data/types.ts`의 `Playlist`, `Track`을 YouTube/Spotify 양쪽이 공유
+- **Path alias**: `@/*` → `./src/*`

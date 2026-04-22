@@ -92,7 +92,7 @@ export function Landing({
               // the upper hook down closer to the "on" glyphs so the
               // visual gap matches the bottom.
               style={{
-                top: '-6%',
+                top: '-10%',
                 right: '-15%',
                 bottom: '-15%',
                 left: '-15%',

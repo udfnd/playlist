@@ -5,7 +5,6 @@ import { useState } from 'react';
 interface LandingProps {
   onSubmit: (url: string) => void;
   onSignIn: () => void;
-  onUseDemo: () => void;
   isLoading: boolean;
   error: string | null;
 }
@@ -20,7 +19,6 @@ interface LandingProps {
 export function Landing({
   onSubmit,
   onSignIn,
-  onUseDemo,
   isLoading,
   error,
 }: LandingProps) {
@@ -106,15 +104,6 @@ export function Landing({
           </div>
 
           <div className="w-full max-w-sm flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={onUseDemo}
-              disabled={isLoading}
-              className="text-sm font-sans text-cream-white/60 hover:text-cream-white underline-offset-4 decoration-cream-white/20 hover:decoration-cream-white/50 underline self-center md:self-start focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-amber/60 rounded px-1 transition-colors disabled:opacity-40"
-            >
-              Try with a demo playlist
-            </button>
-
             {/*
               Secondary: paste a YouTube URL to view anonymously. Kept disclosed
               so the landing stays uncluttered while shared /?list= links still

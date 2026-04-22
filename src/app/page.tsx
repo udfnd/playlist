@@ -7,7 +7,6 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Landing } from '@/components/ui/Landing';
 import { SaveAsRoomButton } from '@/components/ui/SaveAsRoomButton';
-import { defaultPlaylist } from '@/data/mock-playlists';
 import type { Playlist } from '@/data/types';
 
 const SongCarousel = dynamic(
@@ -87,11 +86,6 @@ export default function Home() {
     signIn('google', { callbackUrl: '/home' });
   }, []);
 
-  const handleUseDemo = useCallback(() => {
-    setPlaylist(defaultPlaylist);
-    setView('carousel');
-  }, []);
-
   const handleBack = useCallback(() => {
     setPlaylist(null);
     setView('landing');
@@ -139,7 +133,6 @@ export default function Home() {
       <Landing
         onSubmit={loadPlaylist}
         onSignIn={handleSignIn}
-        onUseDemo={handleUseDemo}
         isLoading={isLoading}
         error={error}
       />

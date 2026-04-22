@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { OnrepeatTrack } from './OnrepeatTrack';
 
 interface LandingProps {
   onSubmit: (url: string) => void;
@@ -35,13 +34,20 @@ export function Landing({
     <div className="fixed inset-0 z-50 bg-matte-black overflow-hidden">
       <div className="h-full w-full flex flex-col md:flex-row">
         {/*
-          Left half — the wordmark as kinetic typography. "onrepeat." streams
-          continuously along a stadium-shaped (running-track) SVG path,
-          reinforcing the playlist-on-repeat metaphor. Implementation lives
-          in OnrepeatTrack.tsx; Landing stays layout-only here.
+          Left half — oversized wordmark. `font-black` = Geist Sans weight 900.
+          Type size scales with viewport width (clamp) so the two stacked
+          lines occupy roughly 2/3 of the viewport height on common desktops
+          while still fitting on phones.
         */}
-        <section className="flex-1 flex items-center justify-center px-6 py-10 md:py-0">
-          <OnrepeatTrack />
+        <section className="flex-1 flex items-center justify-center md:justify-start md:pl-[8vw] px-6 py-10 md:py-0">
+          <h1
+            className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none"
+            style={{ fontSize: 'clamp(88px, 18vw, 260px)' }}
+          >
+            on
+            <br />
+            repeat.
+          </h1>
         </section>
 
         {/*

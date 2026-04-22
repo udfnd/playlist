@@ -107,12 +107,14 @@ export function Landing({
           </div>
 
           {/*
-            Secondary: paste a YouTube URL to view anonymously. The wrapper
-            reserves enough vertical space for the expanded form so that
-            toggling the <details> open/closed never changes the column's
-            content height, and the group stays centered.
+            Secondary: paste a YouTube URL to view anonymously. The container
+            is `relative`, and the expanded form is absolutely positioned
+            beneath the summary. That way the container's flex height is
+            always just the summary — the closed state is the true center
+            of the group — while opening the disclosure merely reveals the
+            form below without reflowing any sibling.
           */}
-          <div className="w-full max-w-sm h-[130px]">
+          <div className="relative w-full max-w-sm">
             <details
               className="w-full group"
               open={pasteOpen}
@@ -135,7 +137,10 @@ export function Landing({
                   />
                 </svg>
               </summary>
-              <form onSubmit={handleUrlSubmit} className="mt-3 flex flex-col gap-2">
+              <form
+                onSubmit={handleUrlSubmit}
+                className="absolute top-full left-0 right-0 mt-3 flex flex-col gap-2"
+              >
                 <input
                   type="text"
                   value={url}
@@ -162,7 +167,7 @@ export function Landing({
             </details>
 
             {error && (
-              <p className="text-sm text-red-400 -mt-1">{error}</p>
+              <p className="absolute top-full left-0 right-0 mt-1 text-sm text-red-400">{error}</p>
             )}
           </div>
         </section>

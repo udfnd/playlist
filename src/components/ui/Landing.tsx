@@ -9,6 +9,26 @@ interface LandingProps {
   error: string | null;
 }
 
+// The hook SVG positions its top / bottom strokes at
+//   top:    calc(var(--hook-top-offset)    - GAP - stroke_half)
+//   bottom: calc(-var(--hook-bottom-offset) - GAP - stroke_half)
+// where the two custom properties are tuned per-viewport via Tailwind
+// `md:` responsive classes on the <svg> itself. Splitting mobile vs
+// desktop lets us compensate for the fact that Geist Black's real
+// descender at large sizes rides shallower than a pure em-scaled
+// projection of its mobile behaviour — so the mobile and desktop
+// values can be nudged independently without the other side moving.
+//
+// Reference gap target: ~10 px visible between glyph edge and stroke.
+//   Mobile ~60 px font  (≤ md):
+//     top offset 0.2em  → visible "on" top at ~12 px below wrapper top
+//     bottom offset 0.1em → "p" descender tail extends ~6 px below
+//                            wrapper bottom
+//   Desktop ~230 px font (md+):
+//     top offset 0.2em  → ~46 px below wrapper top (same ratio)
+//     bottom offset 0.06em → matches the shallower descender at
+//                             large sizes; empirical tuning
+
 /**
  * Anonymous-visitor landing screen. Split layout: hero wordmark on the left,
  * sign-in CTAs on the right. The Spotify CTA currently funnels into the same
@@ -24,6 +44,10 @@ export function Landing({
 }: LandingProps) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [url, setUrl] = useState('');
+
+  // Visible gap (px) between the glyph edge and the hook stroke's
+  // inner edge. 10 px reads as "clearly separated" at every font size.
+  const GAP_PX = 10;
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,18 +65,38 @@ export function Landing({
         */}
         <section className="flex-1 flex items-center justify-center md:justify-start md:pl-[8vw] px-6 py-10 md:py-0">
           {/*
-            Shrink-to-fit wrapper + `fontSize` on the wrapper itself so
-            both the <h1> and the sibling <svg> INHERIT the same
-            computed font-size. That lets the SVG's `em`-based insets
-            (below) resolve against the wordmark's actual font size
-            rather than against the body default (~16px, which would
-            collapse the insets to near-zero and overlap the glyphs).
+            Shrink-to-fit wrapper. `fontSize` on the wrapper itself lets
+            the sibling <svg> INHERIT the same computed font-size that
+            sizes the wordmark, so the SVG's `em`-based insets below
+            resolve against the actual wordmark size instead of the body
+            default (~16px — which collapsed the insets to near-zero and
+            overlapped the glyphs on mobile).
+
+            The inline `fontSize: 1em` on the <h1> is load-bearing:
+            without it the browser UA stylesheet's default `h1 {
+            font-size: 2em }` would double the wrapper's clamp — the
+            wordmark would blow up to clamp(176px, 36vw, 520px) and
+            overflow the viewport. `1em` pins the h1 to the inherited
+            size (identity multiplier).
           */}
           <div
             className="relative inline-flex w-fit flex-none"
-            style={{ fontSize: 'clamp(88px, 18vw, 260px)' }}
+            // `clamp(min, vw, max)` sized so the widest glyph block
+            // ("repeat." in Geist Black) always fits in the available
+            // column on every viewport, including narrow phones after
+            // the section's 24px side padding:
+            //   320 px viewport → 60 px font (~fits in 272 px inner)
+            //   375 px         → 60 px font
+            //   430 px         → ~68.8 px font
+            //   mid-width      → 16vw
+            //   ≥ ~1500 px     → 240 px cap so the wordmark never
+            //                    blows out of the 50% desktop column
+            style={{ fontSize: 'clamp(60px, 16vw, 240px)' }}
           >
-            <h1 className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none whitespace-nowrap">
+            <h1
+              className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none whitespace-nowrap"
+              style={{ fontSize: '1em' }}
+            >
               on
               <br />
               repeat.
@@ -90,7 +134,7 @@ export function Landing({
               aria-hidden
               viewBox="0 0 200 100"
               preserveAspectRatio="none"
-              className="absolute text-cream-white pointer-events-none"
+              className="absolute text-cream-white pointer-events-none [--hook-top-offset:0.1em] [--hook-bottom-offset:0.2em] md:[--hook-top-offset:0.025em] md:[--hook-bottom-offset:0.25em]"
               // Position the SVG in `em` units relative to the h1's
               // own font size. Previous percentage-of-wrapper positioning
               // was correct on desktop but desynced on mobile Safari /
@@ -107,16 +151,48 @@ export function Landing({
               //   left:   -15% × 4.5em ≈ -0.68em
               //   right:  -15% × 4.5em ≈ -0.68em
               style={{
-                top: '-0.14em',
-                right: '-0.68em',
-                bottom: '-0.27em',
-                left: '-0.68em',
+                // Anchor each stroke's INNER edge exactly GAP_PX
+                // from the nearest visible glyph edge. The glyph
+                // offset ems come from `--hook-top-offset` /
+                // `--hook-bottom-offset` which Tailwind swaps per
+                // breakpoint on the className above.
+                //
+                //   stroke_inner = glyph_edge ± GAP
+                //   path at viewBox y=0 / y=100 → stroke center on
+                //   SVG edge, inner edge `stroke_half` toward the
+                //   text
+                //   ⇒ inset = glyph_em_offset + GAP + stroke_half
+                //
+                // `clamp(7px, 1.4vw, 21px)` is exactly half of the
+                // hook stroke width `clamp(14px, 2.8vw, 42px)`.
+                // ROOT CAUSE FIX: the browser derives an intrinsic
+                // aspect-ratio from `viewBox` (2:1 here). If we only
+                // anchor the SVG with `top/bottom/left/right`, that
+                // aspect-ratio silently overrides one of the pairs —
+                // in our case it ignored `bottom` and sized height
+                // from `width / 2`, so `--hook-bottom-offset` tweaks
+                // never reached the rendered box.
+                //
+                // Opt out of aspect-ratio entirely by anchoring with
+                // `top` + `left` only and specifying BOTH `width` and
+                // `height` explicitly. With width and height both set,
+                // the viewBox ratio is constrained to stretch the
+                // content (preserveAspectRatio="none") instead of
+                // driving the box sizing.
+                top: `calc(var(--hook-top-offset) - ${GAP_PX}px - clamp(7px, 1.4vw, 21px))`,
+                left: 'calc(0px - min(0.68em, 6vw))',
+                width: 'calc(100% + 2 * min(0.68em, 6vw))',
+                height: `calc(100% - var(--hook-top-offset) + var(--hook-bottom-offset) + ${2 * GAP_PX}px + clamp(14px, 2.8vw, 42px))`,
                 overflow: 'visible',
               }}
             >
-              {/* Upper L hook: across the top, then down on the right. */}
+              {/* Upper L hook: across the top, then down on the right.
+                  Top horizontal at viewBox y=0 so the stroke center
+                  lands exactly on the SVG's top edge — the CSS `top`
+                  inset above is tuned to place THIS stroke relative
+                  to the measured glyph top. */}
               <path
-                d="M 5 3 L 195 3 L 195 44"
+                d="M 5 0 L 195 0 L 195 44"
                 fill="none"
                 stroke="currentColor"
                 strokeLinecap="butt"
@@ -129,9 +205,12 @@ export function Landing({
               <polygon points="188,44 202,44 195,58" fill="currentColor" />
 
               {/* Lower L hook: rotationally mirrored. Across the bottom
-                  (right → left), then up on the left. */}
+                  (right → left), then up on the left. Bottom
+                  horizontal at viewBox y=100 so stroke center sits on
+                  the SVG's bottom edge, matching the `bottom` inset
+                  anchor. */}
               <path
-                d="M 195 97 L 5 97 L 5 56"
+                d="M 195 100 L 5 100 L 5 56"
                 fill="none"
                 stroke="currentColor"
                 strokeLinecap="butt"

@@ -51,12 +51,13 @@ export function Landing({
         </section>
 
         {/*
-          Right half — auth CTAs. Two primary buttons, visually distinct
-          per brand, horizontally centered. The URL-paste fallback below
-          lives inside a fixed-height well so toggling the disclosure
-          open never shifts the buttons' vertical center.
+          Right half — auth CTAs. Buttons are pinned to the true vertical
+          + horizontal center of the right column. The URL-paste fallback
+          is absolutely positioned near the bottom so it never affects
+          the buttons' center, and toggling the disclosure open/closed
+          never reflows them.
         */}
-        <section className="flex-1 flex flex-col items-center justify-center gap-5 px-6 py-10 md:py-0">
+        <section className="flex-1 relative flex flex-col items-center justify-center px-6 py-10 md:py-0">
           <div className="w-full max-w-sm flex flex-col gap-3">
             <button
               type="button"
@@ -105,12 +106,13 @@ export function Landing({
           </div>
 
           {/*
-            Secondary: paste a YouTube URL to view anonymously. The wrapper
-            reserves enough vertical space for the expanded form so that
-            toggling the <details> open/closed never reflows the buttons
-            above.
+            Secondary: paste a YouTube URL to view anonymously. Absolutely
+            anchored near the bottom of the right column so it is out of
+            the flex flow — the CTAs above remain at true vertical center
+            whether this is open or closed.
           */}
-          <div className="w-full max-w-sm h-[130px]">
+          <div className="absolute bottom-[8vh] left-0 right-0 flex flex-col items-center px-6 pointer-events-none">
+            <div className="w-full max-w-sm pointer-events-auto">
             <details
               className="w-full group"
               open={pasteOpen}
@@ -162,6 +164,7 @@ export function Landing({
             {error && (
               <p className="text-sm text-red-400 -mt-1">{error}</p>
             )}
+            </div>
           </div>
         </section>
       </div>

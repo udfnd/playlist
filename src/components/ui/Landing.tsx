@@ -41,19 +41,18 @@ export function Landing({
         */}
         <section className="flex-1 flex items-center justify-center md:justify-start md:pl-[8vw] px-6 py-10 md:py-0">
           {/*
-            Use a shrink-to-fit wrapper that pins its width to the
-            intrinsic h1 content on every browser. `inline-block` alone
-            can be flaky inside flex containers on iOS Safari (the
-            wrapper occasionally ends up wider than the h1, which then
-            desyncs the absolutely-positioned SVG from the glyphs).
-            `inline-flex` + `w-fit` is a belt-and-braces version that
-            gets the same layout on every engine we've seen.
+            Shrink-to-fit wrapper + `fontSize` on the wrapper itself so
+            both the <h1> and the sibling <svg> INHERIT the same
+            computed font-size. That lets the SVG's `em`-based insets
+            (below) resolve against the wordmark's actual font size
+            rather than against the body default (~16px, which would
+            collapse the insets to near-zero and overlap the glyphs).
           */}
-          <div className="relative inline-flex w-fit flex-none">
-            <h1
-              className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none whitespace-nowrap"
-              style={{ fontSize: 'clamp(88px, 18vw, 260px)' }}
-            >
+          <div
+            className="relative inline-flex w-fit flex-none"
+            style={{ fontSize: 'clamp(88px, 18vw, 260px)' }}
+          >
+            <h1 className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none whitespace-nowrap">
               on
               <br />
               repeat.

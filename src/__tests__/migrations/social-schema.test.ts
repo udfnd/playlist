@@ -31,9 +31,14 @@ describe('SPEC-SOCIAL-001 social schema migration', () => {
     expect(rls.length).toBe(4);
   });
 
-  it('defines the reactions UNIQUE constraint on the idempotency key', () => {
-    // The unique block wraps: room_id, track_ref, actor_kind, coalesce(...), emoji
-    expect(sql).toMatch(/unique\s*\(\s*room_id,\s*track_ref,\s*actor_kind,/);
+  it('defines the reactions idempotency key as a unique expression index', () => {
+    // Postgres forbids function calls inside a plain UNIQUE constraint, so
+    // the idempotency guard is expressed as a unique expression index
+    // covering: room_id, track_ref, actor_kind, coalesce(visitor_id, user_id), emoji
+    expect(sql).toMatch(
+      /create\s+unique\s+index\s+track_reactions_actor_emoji_unique_idx/i,
+    );
+    expect(sql).toMatch(/room_id,\s*track_ref,\s*actor_kind,/);
     expect(sql).toMatch(/coalesce\s*\(\s*visitor_id::text,\s*user_id::text\s*\)/);
   });
 });

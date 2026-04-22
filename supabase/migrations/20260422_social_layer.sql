@@ -21,15 +21,19 @@ create table public.track_reactions (
     (actor_kind = 'visitor' and visitor_id is not null and user_id is null)
     or
     (actor_kind = 'user'    and user_id    is not null and visitor_id is null)
-  ),
-  unique (
-    room_id, track_ref, actor_kind,
-    coalesce(visitor_id::text, user_id::text),
-    emoji
   )
 );
 create index track_reactions_room_track_idx
   on public.track_reactions (room_id, track_ref);
+-- Idempotency: uniqueness on the actor (either visitor_id or user_id) + emoji.
+-- Expressed as a unique expression index because Postgres does not allow
+-- function calls inside a plain UNIQUE constraint column list.
+create unique index track_reactions_actor_emoji_unique_idx
+  on public.track_reactions (
+    room_id, track_ref, actor_kind,
+    coalesce(visitor_id::text, user_id::text),
+    emoji
+  );
 
 -- Track suggestions (auth-required queue)
 create table public.track_suggestions (

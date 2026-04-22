@@ -52,10 +52,11 @@ export function Landing({
 
         {/*
           Right half — auth CTAs. Two primary buttons, visually distinct
-          per brand. A tiny disclosed URL-paste fallback remains for shared
-          ?list= parity and anonymous preview.
+          per brand, horizontally centered. The URL-paste fallback below
+          lives inside a fixed-height well so toggling the disclosure
+          open never shifts the buttons' vertical center.
         */}
-        <section className="flex-1 flex flex-col items-center md:items-start justify-center md:pr-[8vw] px-6 py-10 md:py-0 gap-5">
+        <section className="flex-1 flex flex-col items-center justify-center gap-5 px-6 py-10 md:py-0">
           <div className="w-full max-w-sm flex flex-col gap-3">
             <button
               type="button"
@@ -103,12 +104,13 @@ export function Landing({
             </button>
           </div>
 
-          <div className="w-full max-w-sm flex flex-col gap-3">
-            {/*
-              Secondary: paste a YouTube URL to view anonymously. Kept disclosed
-              so the landing stays uncluttered while shared /?list= links still
-              have a manual entry point.
-            */}
+          {/*
+            Secondary: paste a YouTube URL to view anonymously. The wrapper
+            reserves enough vertical space for the expanded form so that
+            toggling the <details> open/closed never reflows the buttons
+            above.
+          */}
+          <div className="w-full max-w-sm h-[130px]">
             <details
               className="w-full group"
               open={pasteOpen}

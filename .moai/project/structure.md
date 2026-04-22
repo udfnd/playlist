@@ -12,7 +12,7 @@ updated: 2026-04-22
 playlist/
 ├── public/                         # Static assets
 ├── supabase/
-│   └── migrations/                 # 2 SQL migration files
+│   └── migrations/                 # 3 SQL migration files
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx              # Root layout (font, metadata)
@@ -27,8 +27,13 @@ playlist/
 │   │   ├── [handle]/
 │   │   │   ├── page.tsx            # Public user profile
 │   │   │   └── [slug]/
-│   │   │       ├── page.tsx        # Room page
-│   │   │       └── RoomCarousel.tsx
+│   │   │       ├── page.tsx                # Room page
+│   │   │       ├── RoomCarousel.tsx
+│   │   │       ├── ReactionPicker.tsx
+│   │   │       ├── ReactionBadges.tsx
+│   │   │       ├── SuggestTrackButton.tsx
+│   │   │       ├── SearchTrackModal.tsx
+│   │   │       └── OwnerSuggestionQueue.tsx
 │   │   └── api/
 │   │       ├── auth/
 │   │       │   └── spotify/        # connect / callback / disconnect
@@ -57,6 +62,10 @@ playlist/
 │   │   │   ├── oauth.ts
 │   │   │   ├── client.ts           # @MX:WARN race-condition
 │   │   │   └── fetch-playlist.ts   # @MX:ANCHOR
+│   │   ├── visitor/                # HMAC cookie helpers (Web Crypto)
+│   │   ├── reactions/              # service + in-process rate limiter
+│   │   ├── suggestions/            # moderation service
+│   │   ├── search/                 # provider-specific search (YouTube/Spotify)
 │   │   ├── presets/
 │   │   ├── supabase/
 │   │   ├── colors.ts
@@ -94,6 +103,14 @@ playlist/
 | `/api/spotify/playlist` | route.ts | Spotify public playlist resolver |
 | `/api/presets` | route.ts | AI palette generation |
 | `/api/og` | route.ts | Dynamic OG image |
+| `/api/rooms/[id]/reactions` | route.ts | POST/GET/DELETE 이모지 리액션 |
+| `/api/rooms/[id]/suggestions` | route.ts | POST/GET 곡 추천 |
+| `/api/rooms/[id]/suggestions/[sid]` | route.ts | PATCH 주인 승인/거절 |
+| `/api/rooms/[id]/search` | route.ts | GET provider-scoped 검색 |
+
+## Root Files
+
+- `middleware.ts` — 방문자 쿠키 발급 (Edge runtime, Web Crypto HMAC)
 
 ## Architecture Conventions
 

@@ -1,9 +1,9 @@
 ---
 id: SPEC-SOCIAL-001
-version: 0.1.0
-status: draft
+version: 1.0.0
+status: completed
 created: 2026-04-21
-updated: 2026-04-21
+updated: 2026-04-22
 author: manager-spec
 priority: High
 issue_number: 0
@@ -106,3 +106,54 @@ Results **SHALL** be normalized to `{ externalTrackId, title, artist, thumbnailU
 export const EMOJI_SET = ['❤️', '🔥', '✨', '🎧', '👍', '😭', '⭐', '🔁'] as const;
 export type ReactionEmoji = typeof EMOJI_SET[number];
 ```
+
+## Implementation Notes
+
+**구현 완료**: 2026-04-22
+- `07ecbf2` — 본체 구현 (28 신규 + 8 수정 파일)
+- `0b1e7aa` — 마이그레이션 스키마 버그 수정
+- `f3bc884` — NEXTAUTH_SECRET 폴백 추가
+
+**Supabase 마이그레이션**: `20260422033836_social_layer` Live 적용 완료 (project `wjzvyteukkybgsyttsym`). 4개 테이블(`visitors`, `track_reactions`, `track_suggestions`, `room_extra_tracks`) 확인.
+
+### 3세션 TDD 분할
+
+| Session | 범위 | 테스트 |
+|---|---|---|
+| 1 | 스키마 + 방문자 쿠키(Web Crypto) + 리액션 서비스/라우트 + middleware.ts | 149/149 |
+| 2 | 제안 서비스/라우트 + 주인 승인 + 프로바이더 검색(YouTube/Spotify) | 195/195 |
+| 3 | UI (ReactionPicker · SuggestTrackButton · SearchTrackModal · OwnerSuggestionQueue) + RoomCarousel/SongCarousel/SongView 배선 + `/home` 대기 건수 뱃지 | 208/208 |
+
+### 계획 대비 차이
+
+1. **스키마 표현**: plan.md의 `UNIQUE (…, coalesce(…), …)` 제약이 Postgres에서 syntax error → `CREATE UNIQUE INDEX` 표현 인덱스로 전환. 의미 동일, Apply 시점에 발견.
+2. **`AUTH_SECRET` 환경변수**: 실제 `.env.local`은 NextAuth v4 시절 명명인 `NEXTAUTH_SECRET`만 보유. HMAC 리더 4곳(`middleware.ts`, `connect/route.ts`, `callback/route.ts`, `reactions/route.ts`)에 `process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET` 폴백 추가.
+3. **Next.js 16 Server Component 쿠키 쓰기 제약 해결**: `middleware.ts` + Web Crypto 조합 선택. Edge/Node 양쪽에서 동일 `src/lib/visitor/cookie.ts` 모듈이 동작.
+4. **`Song.isSuggested?: boolean`** 옵셔널 필드 추가 (비파괴). RoomCarousel이 "추천" 배지 렌더링에 사용.
+5. **UI prop-drill**: `reactions`/`viewerUserId`/`isOwner`를 RoomCarousel → SongCarousel → SongView로 3단 전달. MVP 허용, 추후 context 승격 검토.
+6. **`/home` pending 카운트**: `track_suggestions`가 생성된 Supabase 타입에 아직 없어 `any` 캐스트 사용. `npx supabase gen types typescript`로 재생성하면 해소됨.
+
+### 수락 기준 대응
+- Scenario 1 (방문자 쿠키 발급) → middleware.test.ts (fresh/valid/tampered)
+- Scenario 2 (idempotent ❤️) → reactions/service.test.ts + route.test.ts
+- Scenario 3 (로그인 유저 Spotify 방 제안) → suggestions route.test.ts + service provider-mismatch 케이스
+- Scenario 4 (승인 → room_extra_tracks + 추천 배지) → moderateSuggestion approve 분기 + RoomCarousel/SongView UI 테스트
+- Scenario 5 (비소유자 403) → PATCH route.test.ts forbidden 케이스
+- Scenario 6 (provider-scoped 검색) → search route.test.ts YouTube/Spotify 분기
+- E1–E5 엣지 → 해당 각 테스트에 포함 (E2 rate limit 31st, E3 provider 불일치, E4 병렬 idempotency, E5 409 already_resolved)
+
+### MX 태그 인벤토리
+- `@MX:WARN @MX:REASON=idempotency-and-rate-limit` — reactions POST 핸들러
+- `@MX:WARN @MX:REASON=csrf-surface` — suggestions PATCH 핸들러
+- `@MX:ANCHOR` — `createSuggestion`, `moderateSuggestion`, `upsertReaction`, `issueVisitorCookieHeader`
+- `@MX:NOTE` — in-memory rate limiter Map (MVP, 프로덕션 Redis 권장), YouTube `/search` 이후 `/videos?part=contentDetails` duration 보강
+
+### 배포 전 남은 것
+- **수동 E2E**: Google OAuth + 실제 Spotify 계정 필요 — AI가 대신할 수 없음. spec.md의 7단계 수동 체크리스트(별도 대화에 이미 전달) 참조.
+- **타입 재생성**(옵션): `npx supabase gen types typescript --project-id wjzvyteukkybgsyttsym > src/lib/supabase/database.types.ts` — `/home` 페이지의 `any` 캐스트 제거 가능.
+
+### 후속 SPEC 후보
+- 실시간 반응 업데이트 (Supabase Realtime)
+- 방 주인 알림 (이메일/푸시)
+- 방문자 차단·모더레이션 고급 기능
+- Rate limiter Redis 이전

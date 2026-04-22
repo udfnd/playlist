@@ -44,9 +44,15 @@ onrepeat.cc는 플레이리스트를 3D 리스닝 "방(room)"으로 출판하는
 | Spotify source | Done | OAuth link + ingestion + embed, SPEC-SPOTIFY-001 |
 | OG images | Done | Dynamic generation |
 | Sharing | Done | Public profile + share button |
+| 방문자 소셜 레이어 | Done | 이모지 리액션 + 곡 추천 승인 큐, SPEC-SOCIAL-001 |
 
 ## Planned Use Cases
 
 - **Web Playback SDK**: Spotify Premium 풀-트랙 재생 (별도 SPEC 예정)
-- **방문자 리액션 + 서비스 간 곡 추천**: Phase 2 SPEC
 - `music_connections.provider_account_id` 백필 (Spotify 프로필 id 수집)
+
+## 방문자 소셜 레이어 (SPEC-SOCIAL-001)
+
+- 이모지 리액션: 비로그인 방문자도 쿠키 기반 익명 식별로 곡 단위 리액션 가능
+- 로그인 유저의 곡 추천 + 방 소유자 승인 큐 (provider 일치 강제)
+- 승인된 추천은 해당 방에만 추가 트랙으로 표시 — 외부 플레이리스트 변경 없음

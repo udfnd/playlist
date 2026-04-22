@@ -39,3 +39,9 @@ Middleware decision: chose `middleware.ts` at project root over API bootstrap. W
 - T-8 complete: src/app/home/page.tsx (per-room pending count query), src/app/home/RoomCard.tsx (pendingCount prop + "대기 중 N건" pill) · drift 0
 
 Totals: 208/208 tests (195 prior + 13 new) · tsc clean · lint 0 errors · 3 pre-existing scripts/ warnings · DoD token-leak grep confirms only server-component hits in page.tsx · Song.isSuggested is additive and all prior tests still pass.
+
+## Sync — 2026-04-22
+- Migration applied live (Supabase project wjzvyteukkybgsyttsym, `20260422033836_social_layer`)
+- Schema fix 0b1e7aa (UNIQUE constraint → expression index)
+- Env fallback f3bc884 (NEXTAUTH_SECRET accepted)
+- spec.md status: draft → completed, version 1.0.0

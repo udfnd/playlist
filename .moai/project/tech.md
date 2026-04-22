@@ -75,7 +75,18 @@ updated: 2026-04-22
 
 - Next.js 서버 사이드에서만 service-role 키 사용 (클라이언트 번들 미포함)
 - `@supabase/ssr`로 SSR 세션 관리
-- 마이그레이션: `supabase/migrations/` (2개 파일)
+- 마이그레이션: `supabase/migrations/` (3개 파일, `20260422033836_social_layer` 포함)
+- 소셜 레이어 테이블: `visitors`, `track_reactions`, `track_suggestions`, `room_extra_tracks` (service-role RLS)
+
+### Visitor Cookie / Web Crypto (SPEC-SOCIAL-001)
+
+- `middleware.ts` (project root) + `src/lib/visitor/cookie.ts`
+- Web Crypto API (`crypto.subtle`) — Edge/Node 양쪽 런타임 호환
+- HMAC-SHA-256 서명 쿠키 `__Host-visitor` (HttpOnly, Secure, SameSite=Lax)
+
+### Rate Limiting
+
+- in-process sliding window Map (MVP); 프로덕션 Redis 이전 권장 (`@MX:NOTE`)
 
 ### Anthropic SDK
 
@@ -90,7 +101,7 @@ updated: 2026-04-22
 | `build` | 프로덕션 빌드 |
 | `start` | 프로덕션 서버 |
 | `lint` | ESLint 실행 |
-| `test` | Vitest 단위/통합 테스트 (116개 green) |
+| `test` | Vitest 단위/통합 테스트 (208개 green) |
 
 ## Key Configuration Files
 

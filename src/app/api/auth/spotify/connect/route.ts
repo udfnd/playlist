@@ -19,7 +19,7 @@ const SPOTIFY_SCOPES = [
 ] as const;
 
 function requireAuthSecret(): string {
-  const secret = process.env.AUTH_SECRET;
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) {
     throw new Error('AUTH_SECRET is not set. Required to sign the Spotify OAuth state cookie.');
   }

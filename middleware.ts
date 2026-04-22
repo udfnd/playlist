@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_NAME, signVisitorId, verifyVisitorCookie } from '@/lib/visitor/cookie';
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
-  const secret = process.env.AUTH_SECRET;
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) return NextResponse.next();
 
   const existing = req.cookies.get(COOKIE_NAME)?.value ?? null;

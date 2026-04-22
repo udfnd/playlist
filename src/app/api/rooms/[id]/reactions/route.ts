@@ -35,7 +35,7 @@ async function resolveActor(request: Request): Promise<Actor | null> {
   if (session?.userId) {
     return { kind: 'user', id: session.userId };
   }
-  const secret = process.env.AUTH_SECRET;
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) return null;
   // Parse cookies from the header. Next-native Request doesn't expose a
   // typed `.cookies`, so we fall back to the Cookie header.

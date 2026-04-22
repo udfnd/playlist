@@ -39,14 +39,18 @@ const TRACK_D = [
 
 const PHRASE = 'onrepeat. ';
 // Repeat enough copies that the concatenated string is always longer
-// than the stadium circumference at any viewport size. 40 copies at
-// 84px Geist-Black is comfortably over 20,000 user units; the stadium
-// circumference is ~3,300.
-const REPEAT_COUNT = 40;
+// than the stadium circumference at any viewport size. 20 copies at
+// 140px Geist-Black easily exceeds the ~3,300-unit circumference while
+// keeping the DOM string small.
+const REPEAT_COUNT = 20;
 const FULL_PHRASE = PHRASE.repeat(REPEAT_COUNT);
 
-// Seconds per single-phrase cycle. Lower = faster scroll. Tuned so one
-// "onrepeat." glides past per ~5 s — readable, not dizzying.
+// Type size in SVG user units. With the 1400×600 viewBox this fills
+// enough of the stadium height that the wordmark reads as "the brand"
+// rather than "decorative text around an oval".
+const FONT_SIZE_USER_UNITS = 140;
+
+// Seconds per single-phrase cycle. Lower = faster scroll.
 const SECONDS_PER_PHRASE = 5;
 
 export function OnrepeatTrack() {
@@ -80,7 +84,11 @@ export function OnrepeatTrack() {
     <svg
       viewBox="0 0 1400 600"
       preserveAspectRatio="xMidYMid meet"
-      className="w-full h-auto max-h-[70vh] onrepeat-track"
+      // Cap both dimensions so the track reads as a decorative mark
+      // rather than a full-bleed wall of text — smaller footprint, and
+      // the bumped-up user-unit font size means each letter is
+      // relatively larger inside that smaller frame.
+      className="w-full max-w-[720px] h-auto max-h-[48vh] onrepeat-track"
       aria-labelledby="onrepeat-title"
       role="img"
     >
@@ -106,7 +114,7 @@ export function OnrepeatTrack() {
         visibility="hidden"
         aria-hidden
         style={{
-          fontSize: '84px',
+          fontSize: `${FONT_SIZE_USER_UNITS}px`,
           letterSpacing: '-0.04em',
           fontFamily: 'var(--font-geist-sans)',
           fontWeight: 900,
@@ -128,7 +136,7 @@ export function OnrepeatTrack() {
         aria-hidden
         className="fill-cream-white select-none"
         style={{
-          fontSize: '84px',
+          fontSize: `${FONT_SIZE_USER_UNITS}px`,
           letterSpacing: '-0.04em',
           fontFamily: 'var(--font-geist-sans)',
           fontWeight: 900,

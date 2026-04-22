@@ -40,9 +40,18 @@ export function Landing({
           instead of arcs so they fit the geometric Geist Black type.
         */}
         <section className="flex-1 flex items-center justify-center md:justify-start md:pl-[8vw] px-6 py-10 md:py-0">
-          <div className="relative inline-block">
+          {/*
+            Use a shrink-to-fit wrapper that pins its width to the
+            intrinsic h1 content on every browser. `inline-block` alone
+            can be flaky inside flex containers on iOS Safari (the
+            wrapper occasionally ends up wider than the h1, which then
+            desyncs the absolutely-positioned SVG from the glyphs).
+            `inline-flex` + `w-fit` is a belt-and-braces version that
+            gets the same layout on every engine we've seen.
+          */}
+          <div className="relative inline-flex w-fit flex-none">
             <h1
-              className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none"
+              className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none whitespace-nowrap"
               style={{ fontSize: 'clamp(88px, 18vw, 260px)' }}
             >
               on
@@ -83,19 +92,26 @@ export function Landing({
               viewBox="0 0 200 100"
               preserveAspectRatio="none"
               className="absolute text-cream-white pointer-events-none"
-              // Asymmetric inset on purpose. The first line is "on"
-              // (all lowercase, no ascenders) so the h1 line box leaves
-              // significant empty space above the visible glyph tops —
-              // if the top inset matched the bottom, the upper hook
-              // would sit visibly further from the text than the lower
-              // one. Pulling the top inset in from -15% to -6% brings
-              // the upper hook down closer to the "on" glyphs so the
-              // visual gap matches the bottom.
+              // Position the SVG in `em` units relative to the h1's
+              // own font size. Previous percentage-of-wrapper positioning
+              // was correct on desktop but desynced on mobile Safari /
+              // Chrome (the absolutely-positioned SVG resolved its %s
+              // against a wrapper whose measured width did not always
+              // match the h1's intrinsic glyph width by a few pixels,
+              // pushing the hooks off the text). 1em here = h1 fontSize,
+              // so the hook offsets scale perfectly with the wordmark on
+              // every engine. Values below are the em equivalents of the
+              // previous -8% / -15% / -16% insets against the ~1.7em tall
+              // × ~4.5em wide h1 box.
+              //   top:    -8%  × 1.7em ≈ -0.14em
+              //   bottom: -16% × 1.7em ≈ -0.27em
+              //   left:   -15% × 4.5em ≈ -0.68em
+              //   right:  -15% × 4.5em ≈ -0.68em
               style={{
-                top: '-8%',
-                right: '-15%',
-                bottom: '-16%',
-                left: '-15%',
+                top: '-0.14em',
+                right: '-0.68em',
+                bottom: '-0.27em',
+                left: '-0.68em',
                 overflow: 'visible',
               }}
             >

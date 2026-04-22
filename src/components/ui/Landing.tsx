@@ -51,49 +51,68 @@ export function Landing({
             </h1>
 
             {/*
-              Angular repeat mark. Two rotationally-symmetric L-hooks,
-              each with an arrowhead at its tip, surround the wordmark:
+              Angular repeat mark. Two rotationally-symmetric L-hooks
+              with arrowheads, wrapping around the wordmark:
 
-                ─────────────────────→┐
-                                      ▼
+                ──────────────────→┐
+                                   ▼
                 (wordmark sits here)
                 ▲
-                └─────────────────────
+                └──────────────────
 
-              `preserveAspectRatio="none"` lets the hooks stretch to the
-              wordmark's bounding box; `vector-effect="non-scaling-stroke"`
-              keeps line widths crisp regardless of that stretch.
+              Design notes:
+              - `preserveAspectRatio="none"` lets the hooks flex with the
+                wordmark's bounding box (which varies with the clamp'd
+                font size across viewport widths).
+              - `vector-effect="non-scaling-stroke"` keeps the stroke
+                width exactly at its CSS value regardless of that stretch,
+                so we can match the hook thickness to the Geist-Black
+                stem via `clamp(14px, 2.8vw, 42px)`.
+              - Arrowheads are filled polygons (they scale with the SVG
+                like any fill; kept small enough that the mild horizontal
+                stretch does not distort them much).
+              - `overflow: visible` is set so the thick miter corners,
+                which extend beyond the viewBox at the L-junction, do
+                not get clipped.
+              - 15% inset on every side gives the strokes enough breathing
+                room above/below and beside the wordmark that they never
+                overlap the glyphs even at the smallest font size.
             */}
             <svg
               aria-hidden
               viewBox="0 0 200 100"
               preserveAspectRatio="none"
-              className="absolute -inset-[7%] w-[114%] h-[114%] text-cream-white pointer-events-none"
+              className="absolute -inset-[15%] w-[130%] h-[130%] text-cream-white pointer-events-none"
+              style={{ overflow: 'visible' }}
             >
-              {/* Upper hook: left → right across the top, down on the
-                  right, arrowhead pointing down at the mid-right. */}
+              {/* Upper L hook: across the top, then down on the right. */}
               <path
-                d="M 5 3 L 195 3 L 195 48 M 191 44 L 195 48 M 199 44 L 195 48"
+                d="M 5 3 L 195 3 L 195 44"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="square"
+                strokeLinecap="butt"
                 strokeLinejoin="miter"
                 vectorEffect="non-scaling-stroke"
+                style={{ strokeWidth: 'clamp(14px, 2.8vw, 42px)' }}
               />
-              {/* Lower hook: rotational mirror. Right → left across the
-                  bottom, up on the left, arrowhead pointing up at the
-                  mid-left. Together the two hooks read as a closed
-                  repeat loop. */}
+              {/* Upper arrowhead — tip pointing down, sitting flush
+                  beneath the descending stroke's end. */}
+              <polygon points="188,44 202,44 195,58" fill="currentColor" />
+
+              {/* Lower L hook: rotationally mirrored. Across the bottom
+                  (right → left), then up on the left. */}
               <path
-                d="M 195 97 L 5 97 L 5 52 M 1 56 L 5 52 M 9 56 L 5 52"
+                d="M 195 97 L 5 97 L 5 56"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="square"
+                strokeLinecap="butt"
                 strokeLinejoin="miter"
                 vectorEffect="non-scaling-stroke"
+                style={{ strokeWidth: 'clamp(14px, 2.8vw, 42px)' }}
               />
+              {/* Lower arrowhead — tip pointing up, sitting flush above
+                  the ascending stroke's end. */}
+              <polygon points="12,56 -2,56 5,42" fill="currentColor" />
             </svg>
           </div>
         </section>

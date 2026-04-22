@@ -34,20 +34,68 @@ export function Landing({
     <div className="fixed inset-0 z-50 bg-matte-black overflow-hidden">
       <div className="h-full w-full flex flex-col md:flex-row">
         {/*
-          Left half — oversized wordmark. `font-black` = Geist Sans weight 900.
-          Type size scales with viewport width (clamp) so the two stacked
-          lines occupy roughly 2/3 of the viewport height on common desktops
-          while still fitting on phones.
+          Left half — oversized wordmark framed by two angular "repeat"
+          hooks. The hooks carry the classic repeat-icon semantic (two
+          arrows chasing each other around the text) but with 90° corners
+          instead of arcs so they fit the geometric Geist Black type.
         */}
         <section className="flex-1 flex items-center justify-center md:justify-start md:pl-[8vw] px-6 py-10 md:py-0">
-          <h1
-            className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none"
-            style={{ fontSize: 'clamp(88px, 18vw, 260px)' }}
-          >
-            on
-            <br />
-            repeat.
-          </h1>
+          <div className="relative inline-block">
+            <h1
+              className="font-sans font-black text-cream-white tracking-[-0.04em] leading-[0.85] select-none"
+              style={{ fontSize: 'clamp(88px, 18vw, 260px)' }}
+            >
+              on
+              <br />
+              repeat.
+            </h1>
+
+            {/*
+              Angular repeat mark. Two rotationally-symmetric L-hooks,
+              each with an arrowhead at its tip, surround the wordmark:
+
+                ─────────────────────→┐
+                                      ▼
+                (wordmark sits here)
+                ▲
+                └─────────────────────
+
+              `preserveAspectRatio="none"` lets the hooks stretch to the
+              wordmark's bounding box; `vector-effect="non-scaling-stroke"`
+              keeps line widths crisp regardless of that stretch.
+            */}
+            <svg
+              aria-hidden
+              viewBox="0 0 200 100"
+              preserveAspectRatio="none"
+              className="absolute -inset-[7%] w-[114%] h-[114%] text-cream-white pointer-events-none"
+            >
+              {/* Upper hook: left → right across the top, down on the
+                  right, arrowhead pointing down at the mid-right. */}
+              <path
+                d="M 5 3 L 195 3 L 195 48 M 191 44 L 195 48 M 199 44 L 195 48"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                vectorEffect="non-scaling-stroke"
+              />
+              {/* Lower hook: rotational mirror. Right → left across the
+                  bottom, up on the left, arrowhead pointing up at the
+                  mid-left. Together the two hooks read as a closed
+                  repeat loop. */}
+              <path
+                d="M 195 97 L 5 97 L 5 52 M 1 56 L 5 52 M 9 56 L 5 52"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          </div>
         </section>
 
         {/*

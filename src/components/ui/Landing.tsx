@@ -82,8 +82,22 @@ export function Landing({
               aria-hidden
               viewBox="0 0 200 100"
               preserveAspectRatio="none"
-              className="absolute -inset-[15%] w-[130%] h-[130%] text-cream-white pointer-events-none"
-              style={{ overflow: 'visible' }}
+              className="absolute text-cream-white pointer-events-none"
+              // Asymmetric inset on purpose. The first line is "on"
+              // (all lowercase, no ascenders) so the h1 line box leaves
+              // significant empty space above the visible glyph tops —
+              // if the top inset matched the bottom, the upper hook
+              // would sit visibly further from the text than the lower
+              // one. Pulling the top inset in from -15% to -6% brings
+              // the upper hook down closer to the "on" glyphs so the
+              // visual gap matches the bottom.
+              style={{
+                top: '-6%',
+                right: '-15%',
+                bottom: '-15%',
+                left: '-15%',
+                overflow: 'visible',
+              }}
             >
               {/* Upper L hook: across the top, then down on the right. */}
               <path

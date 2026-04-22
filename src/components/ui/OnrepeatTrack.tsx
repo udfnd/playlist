@@ -24,10 +24,11 @@ import { useEffect, useRef, useState } from 'react';
  *   - `prefers-reduced-motion: reduce` freezes the marquee (see globals.css).
  */
 
-// Horizontal stadium geometry. viewBox 1400 × 600 (aspect ~2.33:1 — reads
-// clearly as a running-track oval without collapsing too short
-// vertically on 50vw columns). Semicircle radius = 300; straight legs
-// span x = 300..1100 on the top (y=0) and bottom (y=600).
+// Horizontal stadium geometry. Path itself lives in the x ∈ [0,1400],
+// y ∈ [0,600] rectangle; the viewBox below is padded so glyph ascenders
+// and descenders rendered *outside* the path (which is unavoidable when
+// text sits on the path's baseline) are not clipped at the frame edges.
+// Semicircle radius = 300, straight legs 800 long → aspect ~2.33:1.
 const TRACK_D = [
   'M 300 0',                 // top-left tangent of left semicircle
   'L 1100 0',                // top straight — left to right
@@ -35,6 +36,19 @@ const TRACK_D = [
   'L 300 600',               // bottom straight — right to left
   'A 300 300 0 0 1 300 0',   // left semicircle — bottom to top, clockwise
   'Z',
+].join(' ');
+
+// Padding around the stadium, in user units, large enough to contain
+// the glyph ascent (~0.75 × fontSize) + a little breathing room. With
+// FONT_SIZE_USER_UNITS = 140 that's ~105 units; we round to 150.
+const GLYPH_PADDING = 150;
+const TRACK_INNER_W = 1400;
+const TRACK_INNER_H = 600;
+const VIEWBOX = [
+  -GLYPH_PADDING,
+  -GLYPH_PADDING,
+  TRACK_INNER_W + GLYPH_PADDING * 2,
+  TRACK_INNER_H + GLYPH_PADDING * 2,
 ].join(' ');
 
 const PHRASE = 'onrepeat. ';
@@ -82,12 +96,12 @@ export function OnrepeatTrack() {
 
   return (
     <svg
-      viewBox="0 0 1400 600"
+      viewBox={VIEWBOX}
       preserveAspectRatio="xMidYMid meet"
       // Cap both dimensions so the track reads as a decorative mark
-      // rather than a full-bleed wall of text — smaller footprint, and
-      // the bumped-up user-unit font size means each letter is
-      // relatively larger inside that smaller frame.
+      // rather than a full-bleed wall of text. The viewBox already
+      // includes GLYPH_PADDING around the stadium so ascenders /
+      // descenders laid out on the path are not clipped.
       className="w-full max-w-[720px] h-auto max-h-[48vh] onrepeat-track"
       aria-labelledby="onrepeat-title"
       role="img"
